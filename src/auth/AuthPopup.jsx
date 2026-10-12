@@ -1,0 +1,183 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  APP_NAME,
+  AUTH_MESSAGE_SOURCE,
+  buildAuthorizeUrl,
+  saveToken,
+} from "../lib/auth.js";
+import {
+  CheckIcon,
+  SpinnerIcon,
+  StandupIcon,
+} from "../lib/icons.jsx";
+import "./auth.css";
+
+export default function AuthPopup({ t }) {
+  const [status, setStatus] = useState("idle"); // idle | waiting | success | error
+  const [errorMessage, setErrorMessage] = useState("");
+  const popupRef = useRef(null);
+
+  // Listen for the postMessage dispatched by /authorized.html once the member approves
+  useEffect(() => {
+    async function handleMessage(event) {
+      if (event.origin !== window.location.origin) return;
+      if (!event.data || event.data.source !== AUTH_MESSAGE_SOURCE) return;
+
+      if (!event.data.token) {
+        setStatus("error");
+        setErrorMessage("No authorization token received from Trello.");
+        return;
+      }
+
+      try {
+        await saveToken(t, event.data.token);
+        setStatus("success");
+      } catch (err) {
+        setStatus("error");
+        setErrorMessage("Failed to store authorization credentials: " + (err.message || "Unknown error"));
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [t]);
+
+  // Keep the popup height snugly fit to content so no scrollbars appear
+  useEffect(() => {
+    if (t && typeof t.sizeTo === "function") {
+      t.sizeTo("#root").catch(() => {});
+    }
+  }, [t, status]);
+
+  function handleAuthorize() {
+    setStatus("waiting");
+    setErrorMessage("");
+
+    const returnUrl = `${window.location.origin}/authorized.html`;
+    const authUrl = buildAuthorizeUrl(returnUrl);
+
+    const width = 580;
+    const height = 750;
+
+    const screenWidth = window.screen?.availWidth || window.screen?.width || 1280;
+    const screenHeight = window.screen?.availHeight || window.screen?.height || 800;
+
+    const left = Math.max(0, Math.round((screenWidth - width) / 2));
+    const top = Math.max(0, Math.round((screenHeight - height) / 2));
+
+    popupRef.current = window.open(
+      authUrl,
+      "trelloAuthPopup",
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`
+    );
+
+    // If popup was blocked by browser pop-up blocker
+    if (!popupRef.current || popupRef.current.closed || typeof popupRef.current.closed === "undefined") {
+      setStatus("error");
+      setErrorMessage("Popup was blocked by your browser. Please allow popups for this site and try again.");
+    }
+  }
+
+  function handleOpenStandup() {
+    if (t && typeof t.modal === "function") {
+      t.modal({
+        url: "./standup.html",
+        accentColor: "#6366f1",
+        height: 640,
+        fullscreen: false,
+        title: "Daily Standups",
+      });
+    }
+    if (t && typeof t.closePopup === "function") {
+      t.closePopup();
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div className="auth-popup-container auth-state-box">
+        <div className="auth-success-circle">
+          <CheckIcon width={28} height={28} />
+        </div>
+        <h3 className="auth-title">Connected to {APP_NAME}</h3>
+        <p className="auth-subtitle" style={{ marginBottom: "18px", lineHeight: "1.45" }}>
+          Your Trello account is connected! You can now participate in daily standups, log blockers, and sync sprint status.
+        </p>
+        <button
+          type="button"
+          onClick={handleOpenStandup}
+          className="auth-btn-primary"
+        >
+          Open Daily Standups
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-popup-container">
+      <div className="auth-header">
+        <div className="auth-icon-badge">
+          <StandupIcon width={22} height={22} />
+        </div>
+        <div>
+          <h3 className="auth-title">Connect {APP_NAME}</h3>
+          <p className="auth-subtitle">Trello Authorization</p>
+        </div>
+      </div>
+
+      <p className="auth-body-text">
+        Connect your Trello account so {APP_NAME} can securely sync daily updates, assignees, and card progress.
+      </p>
+
+      <div className="auth-features-list">
+        <div className="auth-feature-item">
+          <span className="auth-feature-dot"></span>
+          <span>Post & sync daily updates directly on cards</span>
+        </div>
+        <div className="auth-feature-item">
+          <span className="auth-feature-dot"></span>
+          <span>Highlight blockers with front-of-card badges</span>
+        </div>
+        <div className="auth-feature-item">
+          <span className="auth-feature-dot"></span>
+          <span>Secure member-private credential storage</span>
+        </div>
+      </div>
+
+      {status === "error" && (
+        <div className="auth-error-box">
+          {errorMessage || "Couldn't connect. Please verify popups are allowed and try again."}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleAuthorize}
+        disabled={status === "waiting"}
+        className="auth-btn-primary"
+      >
+        {status === "waiting" ? (
+          <>
+            <SpinnerIcon width={16} height={16} />
+            Waiting for approval…
+          </>
+        ) : (
+          "Connect Trello Account"
+        )}
+      </button>
+
+      {status === "waiting" && (
+        <p className="auth-body-text" style={{ textAlign: "center", marginTop: "10px", fontSize: "12px" }}>
+          Please complete authorization in the popup window.
+        </p>
+      )}
+
+      {status === "error" && (
+        <button type="button" onClick={handleAuthorize} className="auth-link-btn">
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
