@@ -50,12 +50,12 @@ TrelloPowerUp.initialize({
             });
           }
 
-          // User is authorized -> open centered modal dialog
+          // User is authorized -> open centered modal dialog (fullscreen for generous workspace)
           return t.modal({
             url: "./standup.html",
             accentColor: "#6366f1",
-            height: 640,
-            fullscreen: false,
+            height: 720,
+            fullscreen: true,
             title: "Daily Standups Sync",
           });
         },
@@ -90,8 +90,8 @@ TrelloPowerUp.initialize({
           return t.modal({
             url: `./standup.html${cardParam}`,
             accentColor: "#6366f1",
-            height: 640,
-            fullscreen: false,
+            height: 720,
+            fullscreen: true,
             title: "Daily Standup Entry",
           });
         },
@@ -176,8 +176,8 @@ TrelloPowerUp.initialize({
           return t.modal({
             url: `./standup.html${cardParam}`,
             accentColor: "#6366f1",
-            height: 640,
-            fullscreen: false,
+            height: 720,
+            fullscreen: true,
             title: "Daily Standups",
           });
         },

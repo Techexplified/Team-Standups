@@ -425,7 +425,7 @@ export default function StandupApp({ t }) {
       <header className="standup-navbar">
         <div className="navbar-left">
           <div className="brand-wrapper">
-            <StandupLogoIcon width={28} height={28} />
+            <StandupLogoIcon width={22} height={22} />
             <h1 className="brand-title">Daily Standups</h1>
           </div>
 
@@ -437,7 +437,7 @@ export default function StandupApp({ t }) {
               title="Previous Day"
               onClick={() => handleDateToggle("yesterday")}
             >
-              <ChevronLeftIcon width={13} height={13} />
+              <ChevronLeftIcon width={12} height={12} />
             </button>
             <span className="current-date-text">{selectedDate}</span>
             <button
@@ -446,7 +446,7 @@ export default function StandupApp({ t }) {
               title="Next Day"
               onClick={() => handleDateToggle("today")}
             >
-              <ChevronRightIcon width={13} height={13} />
+              <ChevronRightIcon width={12} height={12} />
             </button>
           </div>
 
@@ -473,7 +473,7 @@ export default function StandupApp({ t }) {
           {/* Circular Participation Ring */}
           <div className="participation-gauge">
             <div className="gauge-svg-box">
-              <svg width="28" height="28" viewBox="0 0 28 28">
+              <svg width="22" height="22" viewBox="0 0 28 28">
                 <defs>
                   <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#38bdf8" />
@@ -502,14 +502,14 @@ export default function StandupApp({ t }) {
               </svg>
             </div>
             <span className="gauge-text">
-              {metrics.participationPct}% submitted
-              <span className="gauge-subtext">({metrics.submittedCount} of {metrics.totalMembers})</span>
+              {metrics.participationPct}%
+              <span className="gauge-subtext">({metrics.submittedCount}/{metrics.totalMembers})</span>
             </span>
           </div>
 
           {/* Primary Action Button */}
           <button type="button" className="btn-log-standup" onClick={openLogModal}>
-            <PlusIcon width={15} height={15} />
+            <PlusIcon width={14} height={14} />
             <span>Log Standup</span>
           </button>
         </div>
@@ -519,44 +519,42 @@ export default function StandupApp({ t }) {
           MAIN DASHBOARD BODY
           ==================================================================== */}
       <main className="standup-body">
-        {/* KPI METRIC SUMMARY CARDS (4 CARDS) */}
+        {/* KPI METRIC SUMMARY CARDS (COMPACT 4-CARD STRIP) */}
         <section className="kpi-metrics-row">
           {/* Card 1: Submitted */}
           <div className="kpi-card kpi-submitted">
             <div className="kpi-card-header">
               <div className="kpi-icon-pill">
-                <CheckCircleIcon width={14} height={14} />
+                <CheckCircleIcon width={12} height={12} />
               </div>
               <span>Submitted</span>
+              <span className="kpi-badge-trend">+15%</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.submittedCount}</span>
               <span className="kpi-total">/ {metrics.totalMembers} members</span>
-              <span className="kpi-badge-trend">+15% streak</span>
             </div>
-            <p className="kpi-subtitle">{metrics.unsubmittedCount} pending submission</p>
           </div>
 
           {/* Card 2: Active Doing Cards */}
           <div className="kpi-card kpi-doing">
             <div className="kpi-card-header">
               <div className="kpi-icon-pill">
-                <TrelloCardIcon width={14} height={14} />
+                <TrelloCardIcon width={12} height={12} />
               </div>
-              <span>Active Doing Cards</span>
+              <span>Active Doing</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.activeDoingCardsCount}</span>
               <span className="kpi-total">tasks in progress</span>
             </div>
-            <p className="kpi-subtitle">Synced across board sprint lists</p>
           </div>
 
           {/* Card 3: Done Yesterday */}
           <div className="kpi-card kpi-done">
             <div className="kpi-card-header">
               <div className="kpi-icon-pill">
-                <CheckIcon width={14} height={14} />
+                <CheckIcon width={12} height={12} />
               </div>
               <span>Done Yesterday</span>
             </div>
@@ -564,22 +562,20 @@ export default function StandupApp({ t }) {
               <span className="kpi-number">{metrics.doneYesterdayCount}</span>
               <span className="kpi-total">completed items</span>
             </div>
-            <p className="kpi-subtitle">Verified in sprint backlog</p>
           </div>
 
           {/* Card 4: Active Blockers */}
           <div className="kpi-card kpi-blockers">
             <div className="kpi-card-header">
               <div className="kpi-icon-pill">
-                <AlertTriangleIcon width={14} height={14} />
+                <AlertTriangleIcon width={12} height={12} />
               </div>
-              <span style={{ color: "#fca5a5" }}>Active Blockers</span>
+              <span style={{ color: "#fca5a5" }}>Blockers</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number" style={{ color: "#f87171" }}>{metrics.blockersCount}</span>
-              <span className="kpi-total" style={{ color: "#fca5a5" }}>critical impediments</span>
+              <span className="kpi-total" style={{ color: "#fca5a5" }}>impediments</span>
             </div>
-            <p className="kpi-subtitle">Requires immediate team attention</p>
           </div>
         </section>
 
