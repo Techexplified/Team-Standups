@@ -519,63 +519,75 @@ export default function StandupApp({ t }) {
           MAIN DASHBOARD BODY
           ==================================================================== */}
       <main className="standup-body">
-        {/* KPI METRIC SUMMARY CARDS (COMPACT 4-CARD STRIP) */}
+        {/* KPI METRIC SUMMARY CARDS (BALANCED PROPORTIONS) */}
         <section className="kpi-metrics-row">
           {/* Card 1: Submitted */}
           <div className="kpi-card kpi-submitted">
             <div className="kpi-card-header">
-              <div className="kpi-icon-pill">
-                <CheckCircleIcon width={12} height={12} />
+              <div className="kpi-card-title-group">
+                <div className="kpi-icon-pill">
+                  <CheckCircleIcon width={13} height={13} />
+                </div>
+                <span>Submitted</span>
               </div>
-              <span>Submitted</span>
-              <span className="kpi-badge-trend">+15%</span>
+              <span className="kpi-badge-trend">+15% streak</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.submittedCount}</span>
               <span className="kpi-total">/ {metrics.totalMembers} members</span>
             </div>
+            <p className="kpi-subtitle">{metrics.unsubmittedCount} pending updates</p>
           </div>
 
           {/* Card 2: Active Doing Cards */}
           <div className="kpi-card kpi-doing">
             <div className="kpi-card-header">
-              <div className="kpi-icon-pill">
-                <TrelloCardIcon width={12} height={12} />
+              <div className="kpi-card-title-group">
+                <div className="kpi-icon-pill">
+                  <TrelloCardIcon width={13} height={13} />
+                </div>
+                <span>Active Doing</span>
               </div>
-              <span>Active Doing</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.activeDoingCardsCount}</span>
-              <span className="kpi-total">tasks in progress</span>
+              <span className="kpi-total">tasks on board</span>
             </div>
+            <p className="kpi-subtitle">Synced across sprint lists</p>
           </div>
 
           {/* Card 3: Done Yesterday */}
           <div className="kpi-card kpi-done">
             <div className="kpi-card-header">
-              <div className="kpi-icon-pill">
-                <CheckIcon width={12} height={12} />
+              <div className="kpi-card-title-group">
+                <div className="kpi-icon-pill">
+                  <CheckIcon width={13} height={13} />
+                </div>
+                <span>Done Yesterday</span>
               </div>
-              <span>Done Yesterday</span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.doneYesterdayCount}</span>
               <span className="kpi-total">completed items</span>
             </div>
+            <p className="kpi-subtitle">Verified in sprint backlog</p>
           </div>
 
           {/* Card 4: Active Blockers */}
           <div className="kpi-card kpi-blockers">
             <div className="kpi-card-header">
-              <div className="kpi-icon-pill">
-                <AlertTriangleIcon width={12} height={12} />
+              <div className="kpi-card-title-group">
+                <div className="kpi-icon-pill">
+                  <AlertTriangleIcon width={13} height={13} />
+                </div>
+                <span style={{ color: "#fca5a5" }}>Active Blockers</span>
               </div>
-              <span style={{ color: "#fca5a5" }}>Blockers</span>
             </div>
             <div className="kpi-card-value-line">
-              <span className="kpi-number" style={{ color: "#f87171" }}>{metrics.blockersCount}</span>
-              <span className="kpi-total" style={{ color: "#fca5a5" }}>impediments</span>
+              <span className="kpi-number">{metrics.blockersCount}</span>
+              <span className="kpi-total" style={{ color: "#fca5a5" }}>critical</span>
             </div>
+            <p className="kpi-subtitle" style={{ color: "#f87171" }}>Requires team attention</p>
           </div>
         </section>
 
@@ -589,7 +601,7 @@ export default function StandupApp({ t }) {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Quick search members, tasks, or blockers…"
+                placeholder="Search team members, tasks, or blockers…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -600,7 +612,7 @@ export default function StandupApp({ t }) {
               value={selectedTeammate}
               onChange={(e) => setSelectedTeammate(e.target.value)}
             >
-              <option value="all">Teammate: All</option>
+              <option value="all">All Teammates</option>
               {teamMembers.map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
@@ -691,7 +703,7 @@ export default function StandupApp({ t }) {
                         Blocker
                       </span>
                     ) : isUnsubmitted ? (
-                      <span className="status-pill unsubmitted">Unsubmitted</span>
+                      <span className="status-pill unsubmitted">Pending</span>
                     ) : (
                       <span className="status-pill submitted">
                         <CheckIcon width={12} height={12} />
@@ -703,14 +715,20 @@ export default function StandupApp({ t }) {
                   {/* UN-SUBMITTED STATE */}
                   {isUnsubmitted ? (
                     <div className="unsubmitted-content-box">
-                      <p className="unsubmitted-helper">Standup pending for today</p>
+                      <div className="unsubmitted-icon-bubble">
+                        <ClockIcon width={20} height={20} />
+                      </div>
+                      <h4 className="unsubmitted-headline">Standup Pending</h4>
+                      <p className="unsubmitted-helper">
+                        No daily update submitted yet for today. Send a friendly reminder nudge.
+                      </p>
                       <button
                         type="button"
                         className="btn-send-nudge"
                         onClick={() => handleSendNudge(member.name)}
                       >
-                        <BellIcon width={14} height={14} />
-                        <span>Send Nudge</span>
+                        <BellIcon width={13} height={13} />
+                        <span>Send Reminder Nudge</span>
                       </button>
                     </div>
                   ) : (
@@ -754,8 +772,8 @@ export default function StandupApp({ t }) {
                               <div key={task.id} className="trello-card-pill">
                                 <div className="card-pill-left">
                                   <TrelloCardIcon width={13} height={13} style={{ color: "#38bdf8" }} />
-                                  <span style={{ fontWeight: 600, color: "#93c5fd" }}>{task.tag}</span>
-                                  <span style={{ color: "var(--ds-text-primary)" }}>{task.text}</span>
+                                  <span className="card-pill-tag">{task.tag}</span>
+                                  <span className="card-pill-text">{task.text}</span>
                                 </div>
                                 <span className={`card-pill-badge ${badgeClass}`}>{task.status}</span>
                               </div>
@@ -768,7 +786,7 @@ export default function StandupApp({ t }) {
                       {!member.hasBlocker && (
                         <div className="card-section" style={{ marginBottom: 0 }}>
                           <p className="section-label">Blockers</p>
-                          <span className="blockers-none-tag">None reported</span>
+                          <span className="blockers-none-tag">✓ None reported</span>
                         </div>
                       )}
                     </>
