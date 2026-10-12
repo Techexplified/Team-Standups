@@ -22,6 +22,25 @@ import "./standup.css";
 // Initial mock sprint team data representing Version 2 state
 const INITIAL_TEAM_MEMBERS = [
   {
+    id: "m0",
+    name: "Alex Rivera",
+    role: "Lead Frontend Engineer",
+    avatar: "AR",
+    avatarBg: "linear-gradient(135deg, #2563eb, #38bdf8)",
+    timestamp: "Pending",
+    status: "unsubmitted",
+    yesterdayItems: [
+      "Completed token renewal service",
+      "Reviewed Maya's UI specifications",
+    ],
+    todayTasks: [
+      { id: "t0_1", tag: "[UI-401]", text: "Implementing Doing/Done card linking feature", status: "In Progress" },
+      { id: "t0_2", tag: "[TEST-12]", text: "Writing Postgres index tests", status: "In Progress" },
+    ],
+    hasBlocker: false,
+    blockerText: "",
+  },
+  {
     id: "m1",
     name: "Ava Sharma",
     role: "Lead Architect",
@@ -186,15 +205,18 @@ export default function StandupApp({ t }) {
   const [selectedTeammate, setSelectedTeammate] = useState("all");
   const [activeTab, setActiveTab] = useState("all"); // "all" | "submitted" | "unsubmitted" | "blockers"
 
-  // Modal State for Log Standup
+  // Modal State for Log Daily Standup (Exact specification)
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [formTeammate, setFormTeammate] = useState("Alex Rivera");
+  const [formDate, setFormDate] = useState("2026-10-10");
   const [formYesterday, setFormYesterday] = useState("");
-  const [formDoingTasks, setFormDoingTasks] = useState([
-    { id: 1, tag: "[AUTH-402]", text: "OAuth refresh token flow", status: "In Progress" },
-    { id: 2, tag: "[UI-310]", text: "Build modal dialog", status: "In Progress" },
-  ]);
-  const [formHasBlocker, setFormHasBlocker] = useState(false);
-  const [formBlockerText, setFormBlockerText] = useState("");
+  const [formDoingToday, setFormDoingToday] = useState("");
+  const [formBlockers, setFormBlockers] = useState("");
+  const [formLinkedCards, setFormLinkedCards] = useState([]);
+  const [showCardPicker, setShowCardPicker] = useState(false);
+  const [newCardTag, setNewCardTag] = useState("[TASK-105]");
+  const [newCardTitle, setNewCardTitle] = useState("");
+  const [newCardStatus, setNewCardStatus] = useState("In Progress");
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState("");
@@ -322,48 +344,84 @@ export default function StandupApp({ t }) {
     setIsLogModalOpen(false);
   }
 
-  // Doing Task handlers in modal
-  function handleAddTaskRow() {
-    setFormDoingTasks([
-      ...formDoingTasks,
-      { id: Date.now(), tag: "[TASK]", text: "", status: "In Progress" },
-    ]);
+  // Linked Card Handlers for Modal
+  function handleAddLinkedCard() {
+    if (!newCardTitle.trim()) return;
+    const newCard = {
+      id: "c_" + Date.now(),
+      tag: newCardTag.trim() || "[CARD]",
+      title: newCardTitle.trim(),
+      status: newCardStatus,
+    };
+    setFormLinkedCards([...formLinkedCards, newCard]);
+    setNewCardTitle("");
+    setShowCardPicker(false);
   }
 
-  function handleUpdateTaskRow(id, field, value) {
-    setFormDoingTasks(
-      formDoingTasks.map((task) => (task.id === id ? { ...task, [field]: value } : task))
+  function handleToggleCardStatus(id) {
+    setFormLinkedCards(
+      formLinkedCards.map((c) => {
+        if (c.id === id) {
+          return { ...c, status: c.status === "Done" ? "In Progress" : "Done" };
+        }
+        return c;
+      })
     );
   }
 
-  function handleRemoveTaskRow(id) {
-    setFormDoingTasks(formDoingTasks.filter((task) => task.id !== id));
+  function handleRemoveLinkedCard(id) {
+    setFormLinkedCards(formLinkedCards.filter((c) => c.id !== id));
   }
 
   // Submit standup from modal
   function handleSaveStandup(e) {
     e.preventDefault();
 
-    const authorName = currentUser?.fullName || "Ava Sharma";
-    const authorInitials = currentUser?.initials || "AS";
+    const targetName = formTeammate || "Alex Rivera";
 
     const newYesterdayList = formYesterday
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const validTasks = formDoingTasks.filter((t) => t.text.trim().length > 0);
+    // Parse today tasks from textarea
+    const doingLines = formDoingToday
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const textTasks = doingLines.map((line, idx) => ({
+      id: "dt_" + Date.now() + "_" + idx,
+      tag: "[DOING]",
+      text: line,
+      status: "In Progress",
+    }));
+
+    const linkedTasks = formLinkedCards.map((c) => ({
+      id: c.id,
+      tag: c.tag,
+      text: c.title,
+      status: c.status,
+    }));
+
+    const combinedTasks = [...linkedTasks, ...textTasks];
+
+    const hasBlocker = Boolean(
+      formBlockers.trim() &&
+      formBlockers.trim().toLowerCase() !== "none" &&
+      formBlockers.trim().toLowerCase() !== "'none'"
+    );
 
     const updated = teamMembers.map((m) => {
-      if (m.name === authorName || m.id === "m1") {
+      if (m.name === targetName || (targetName === "Alex Rivera" && m.id === "m0")) {
         return {
           ...m,
           status: "submitted",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          yesterdayItems: newYesterdayList.length > 0 ? newYesterdayList : m.yesterdayItems,
-          todayTasks: validTasks.length > 0 ? validTasks : m.todayTasks,
-          hasBlocker: formHasBlocker,
-          blockerText: formHasBlocker ? formBlockerText : "",
+          yesterdayItems: newYesterdayList.length > 0 ? newYesterdayList : (m.yesterdayItems.length > 0 ? m.yesterdayItems : ["Completed planned tasks"]),
+          todayTasks: combinedTasks.length > 0 ? combinedTasks : m.todayTasks,
+          hasBlocker: hasBlocker,
+          blockerText: hasBlocker ? formBlockers.trim() : "",
         };
       }
       return m;
@@ -371,7 +429,7 @@ export default function StandupApp({ t }) {
 
     setTeamMembers(updated);
     closeLogModal();
-    showToast("✨ Your daily standup has been recorded!");
+    showToast(`✨ Standup published for ${targetName}!`);
 
     // If running in Trello, update card data
     if (t && typeof t.set === "function") {
@@ -801,18 +859,28 @@ export default function StandupApp({ t }) {
       {/* ====================================================================
           MODAL: LOG DAILY STANDUP
           ==================================================================== */}
+      {/* ====================================================================
+          MODAL: LOG DAILY STANDUP (Screenshot Specification)
+          ==================================================================== */}
       {isLogModalOpen && (
         <div className="modal-backdrop" onClick={closeLogModal}>
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
             <div className="modal-header">
               <div className="modal-title-group">
-                <StandupLogoIcon width={22} height={22} />
-                <h2 className="modal-title">Log Daily Standup</h2>
+                <div className="modal-badge-su">SU</div>
+                <div>
+                  <h2 className="modal-title">Log Daily Standup</h2>
+                  <p className="modal-subtitle">
+                    Sync yesterday's work, today's focus, and linked cards
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 className="btn-close-modal"
                 onClick={closeLogModal}
+                aria-label="Close modal"
               >
                 <CloseIcon width={16} height={16} />
               </button>
@@ -820,107 +888,184 @@ export default function StandupApp({ t }) {
 
             <form onSubmit={handleSaveStandup}>
               <div className="modal-body">
-                {/* 1. Accomplishments */}
-                <div>
-                  <h3 className="form-group-title">1. What did you accomplish yesterday?</h3>
-                  <p className="form-hint">Enter your achievements or completed tasks (one per line):</p>
+                {/* Top Row: Teammate & Standup Date */}
+                <div className="modal-top-row">
+                  <div className="modal-field-col">
+                    <label className="modal-field-label">Teammate</label>
+                    <select
+                      className="modal-select"
+                      value={formTeammate}
+                      onChange={(e) => setFormTeammate(e.target.value)}
+                    >
+                      {teamMembers.map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="modal-field-col">
+                    <label className="modal-field-label">Standup Date</label>
+                    <input
+                      type="date"
+                      className="modal-date-input"
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* 1. WHAT DID YOU ACCOMPLISH YESTERDAY? */}
+                <div className="modal-section-group">
+                  <label className="modal-section-heading">
+                    1. WHAT DID YOU ACCOMPLISH YESTERDAY?
+                  </label>
                   <textarea
                     className="modal-textarea"
-                    placeholder="e.g. Completed database indexing for standup history tables&#10;Code review for OAuth 2.0 handshake PR"
+                    rows={3}
+                    placeholder="e.g. Completed token renewal service, reviewed Maya's UI specifications, resolved staging bug..."
                     value={formYesterday}
                     onChange={(e) => setFormYesterday(e.target.value)}
-                    required
                   />
                 </div>
 
-                {/* 2. Doing Today */}
-                <div>
-                  <h3 className="form-group-title">2. What are you working on today?</h3>
-                  <p className="form-hint">Specify Trello card tag, task name, and active status:</p>
-
-                  {formDoingTasks.map((task) => (
-                    <div key={task.id} className="doing-task-item">
-                      <input
-                        type="text"
-                        className="task-tag-input"
-                        placeholder="[CARD-ID]"
-                        value={task.tag}
-                        onChange={(e) => handleUpdateTaskRow(task.id, "tag", e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        className="task-desc-input"
-                        placeholder="Task description…"
-                        value={task.text}
-                        onChange={(e) => handleUpdateTaskRow(task.id, "text", e.target.value)}
-                        required
-                      />
-                      <select
-                        className="task-status-select"
-                        value={task.status}
-                        onChange={(e) => handleUpdateTaskRow(task.id, "status", e.target.value)}
-                      >
-                        <option value="In Progress">In Progress</option>
-                        <option value="To Do">To Do</option>
-                        <option value="Done">Done</option>
-                        <option value="Blocked">Blocked</option>
-                      </select>
-                      {formDoingTasks.length > 1 && (
-                        <button
-                          type="button"
-                          className="btn-remove-task"
-                          onClick={() => handleRemoveTaskRow(task.id)}
-                        >
-                          <TrashIcon width={14} height={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="btn-add-item"
-                    onClick={handleAddTaskRow}
-                  >
-                    <PlusIcon width={13} height={13} />
-                    <span>Add Task</span>
-                  </button>
+                {/* 2. WHAT ARE YOU DOING TODAY? */}
+                <div className="modal-section-group">
+                  <label className="modal-section-heading">
+                    2. WHAT ARE YOU DOING TODAY?
+                  </label>
+                  <textarea
+                    className="modal-textarea"
+                    rows={3}
+                    placeholder="e.g. Implementing Doing/Done card linking feature, writing Postgres index tests, pairing on release..."
+                    value={formDoingToday}
+                    onChange={(e) => setFormDoingToday(e.target.value)}
+                  />
                 </div>
 
-                {/* 3. Blockers Toggle */}
-                <div className="blocker-switch-box">
-                  <label className="blocker-switch-label">
-                    <input
-                      type="checkbox"
-                      className="blocker-switch-checkbox"
-                      checked={formHasBlocker}
-                      onChange={(e) => setFormHasBlocker(e.target.checked)}
-                    />
-                    <span>⚠️ I have a blocker or impediment that needs attention</span>
+                {/* 3. ANY BLOCKERS OR WHAT WILL YOU DO NEXT? */}
+                <div className="modal-section-group">
+                  <label className="modal-section-heading">
+                    3. ANY BLOCKERS OR WHAT WILL YOU DO NEXT?
                   </label>
+                  <textarea
+                    className="modal-textarea"
+                    rows={3}
+                    placeholder="e.g. Waiting on PR review from Elena, need staging cluster credentials, or 'None'"
+                    value={formBlockers}
+                    onChange={(e) => setFormBlockers(e.target.value)}
+                  />
+                </div>
 
-                  {formHasBlocker && (
-                    <div style={{ marginTop: 12 }}>
-                      <textarea
-                        className="modal-textarea"
-                        placeholder="Describe the blocker (e.g. Waiting on staging database credentials from DevOps)..."
-                        value={formBlockerText}
-                        onChange={(e) => setFormBlockerText(e.target.value)}
-                        style={{ borderColor: "rgba(239, 68, 68, 0.4)" }}
-                        required={formHasBlocker}
+                {/* LINKED TRELLO CARDS (Check status as Doing or Done) */}
+                <div className="modal-section-group">
+                  <div className="linked-cards-header-line">
+                    <div className="linked-cards-title-wrap">
+                      <span className="modal-section-heading" style={{ marginBottom: 0 }}>
+                        LINKED TRELLO CARDS
+                      </span>
+                      <span className="linked-cards-hint">
+                        (Check status as Doing or Done)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-link-card-action"
+                      onClick={() => setShowCardPicker(!showCardPicker)}
+                    >
+                      <PlusIcon width={13} height={13} />
+                      <span>Link Card</span>
+                    </button>
+                  </div>
+
+                  {/* Optional Interactive Card Linker */}
+                  {showCardPicker && (
+                    <div className="link-card-picker-box">
+                      <input
+                        type="text"
+                        className="card-picker-input"
+                        placeholder="[TAG]"
+                        value={newCardTag}
+                        onChange={(e) => setNewCardTag(e.target.value)}
                       />
+                      <input
+                        type="text"
+                        className="card-picker-input-title"
+                        placeholder="Card title from board..."
+                        value={newCardTitle}
+                        onChange={(e) => setNewCardTitle(e.target.value)}
+                      />
+                      <select
+                        className="card-picker-status"
+                        value={newCardStatus}
+                        onChange={(e) => setNewCardStatus(e.target.value)}
+                      >
+                        <option value="In Progress">Doing</option>
+                        <option value="Done">Done</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-add-card-confirm"
+                        onClick={handleAddLinkedCard}
+                      >
+                        Attach
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Empty state or list */}
+                  {formLinkedCards.length === 0 ? (
+                    <p className="linked-cards-empty-helper">
+                      No cards linked yet. Click "+ Link Card" to attach board cards with Doing or Done status.
+                    </p>
+                  ) : (
+                    <div className="modal-linked-cards-list">
+                      {formLinkedCards.map((card) => (
+                        <div key={card.id} className="modal-linked-card-item">
+                          <div className="card-item-info">
+                            <TrelloCardIcon width={13} height={13} style={{ color: "#38bdf8" }} />
+                            <span className="card-tag">{card.tag}</span>
+                            <span className="card-title">{card.title}</span>
+                          </div>
+                          <div className="card-item-actions">
+                            <button
+                              type="button"
+                              className={`card-status-pill ${
+                                card.status === "Done" ? "status-done" : "status-doing"
+                              }`}
+                              onClick={() => handleToggleCardStatus(card.id)}
+                              title="Click to toggle Doing/Done"
+                            >
+                              {card.status === "Done" ? "Done" : "Doing"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-remove-linked-card"
+                              onClick={() => handleRemoveLinkedCard(card.id)}
+                              title="Remove card"
+                            >
+                              <CloseIcon width={13} height={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Modal Footer */}
               <div className="modal-footer">
-                <button type="button" className="btn-cancel" onClick={closeLogModal}>
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={closeLogModal}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn-log-standup">
-                  <CheckIcon width={15} height={15} />
-                  <span>Submit Standup</span>
+                <button type="submit" className="btn-save-publish">
+                  Save & Publish Standup
                 </button>
               </div>
             </form>
