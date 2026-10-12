@@ -53,7 +53,7 @@ TrelloPowerUp.initialize({
           // User is authorized -> open centered modal dialog (fullscreen for generous workspace)
           return t.modal({
             url: "./standup.html",
-            accentColor: "#6366f1",
+            accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
             title: "Daily Standups Sync",
@@ -89,7 +89,7 @@ TrelloPowerUp.initialize({
 
           return t.modal({
             url: `./standup.html${cardParam}`,
-            accentColor: "#6366f1",
+            accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
             title: "Daily Standup Entry",
@@ -175,7 +175,7 @@ TrelloPowerUp.initialize({
 
           return t.modal({
             url: `./standup.html${cardParam}`,
-            accentColor: "#6366f1",
+            accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
             title: "Daily Standups",
@@ -205,7 +205,7 @@ TrelloPowerUp.initialize({
           callback: function (t) {
             return t.modal({
               url: "./standup.html",
-              accentColor: "#6366f1",
+              accentColor: "#0f172a",
               height: 640,
               fullscreen: false,
               title: "Daily Standups",

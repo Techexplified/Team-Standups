@@ -82,7 +82,7 @@ export default function AuthPopup({ t }) {
     if (t && typeof t.modal === "function") {
       t.modal({
         url: "./standup.html",
-        accentColor: "#6366f1",
+        accentColor: "#0f172a",
         height: 640,
         fullscreen: false,
         title: "Daily Standups",

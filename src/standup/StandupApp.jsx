@@ -886,7 +886,7 @@ export default function StandupApp({ t }) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveStandup}>
+            <form className="modal-form" onSubmit={handleSaveStandup}>
               <div className="modal-body">
                 {/* Top Row: Teammate & Standup Date */}
                 <div className="modal-top-row">
@@ -923,7 +923,7 @@ export default function StandupApp({ t }) {
                   </label>
                   <textarea
                     className="modal-textarea"
-                    rows={3}
+                    rows={2}
                     placeholder="e.g. Completed token renewal service, reviewed Maya's UI specifications, resolved staging bug..."
                     value={formYesterday}
                     onChange={(e) => setFormYesterday(e.target.value)}
@@ -937,7 +937,7 @@ export default function StandupApp({ t }) {
                   </label>
                   <textarea
                     className="modal-textarea"
-                    rows={3}
+                    rows={2}
                     placeholder="e.g. Implementing Doing/Done card linking feature, writing Postgres index tests, pairing on release..."
                     value={formDoingToday}
                     onChange={(e) => setFormDoingToday(e.target.value)}
@@ -951,7 +951,7 @@ export default function StandupApp({ t }) {
                   </label>
                   <textarea
                     className="modal-textarea"
-                    rows={3}
+                    rows={2}
                     placeholder="e.g. Waiting on PR review from Elena, need staging cluster credentials, or 'None'"
                     value={formBlockers}
                     onChange={(e) => setFormBlockers(e.target.value)}
