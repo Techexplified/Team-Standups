@@ -197,6 +197,31 @@ const INITIAL_TEAM_MEMBERS = [
   },
 ];
 
+// Dynamic Date Utility Helpers
+function formatDisplayDate(date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isSameDay(d1, d2) {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
+
 export default function StandupApp({ t }) {
   // Live Board State from Trello
   const [boardData, setBoardData] = useState({
@@ -210,6 +235,18 @@ export default function StandupApp({ t }) {
   });
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Dynamic Real Calendar Date State (Defaults to current local date)
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const dateKey = useMemo(() => formatDateKey(currentDate), [currentDate]);
+  const selectedDate = useMemo(() => formatDisplayDate(currentDate), [currentDate]);
+
+  const isToday = useMemo(() => isSameDay(currentDate, new Date()), [currentDate]);
+  const isYesterday = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return isSameDay(currentDate, yesterday);
+  }, [currentDate]);
 
   // Team standups state (merged with board data)
   const [teamMembers, setTeamMembers] = useState(() => {
@@ -225,10 +262,6 @@ export default function StandupApp({ t }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authorized, setAuthorized] = useState(false);
 
-  // Date Navigation State
-  const [selectedDate, setSelectedDate] = useState("Monday, Oct 12, 2026");
-  const [dateFilter, setDateFilter] = useState("today"); // "today" | "yesterday"
-
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeammate, setSelectedTeammate] = useState("all");
@@ -237,7 +270,7 @@ export default function StandupApp({ t }) {
   // Modal State for Log Daily Standup
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [formTeammate, setFormTeammate] = useState("Alex Rivera");
-  const [formDate, setFormDate] = useState("2026-10-10");
+  const [formDate, setFormDate] = useState(() => formatDateKey(new Date()));
   const [formYesterday, setFormYesterday] = useState("");
   const [formDoingToday, setFormDoingToday] = useState("");
   const [formBlockers, setFormBlockers] = useState("");
@@ -368,6 +401,81 @@ export default function StandupApp({ t }) {
       localStorage.setItem("ds_team_standups_v2", JSON.stringify(teamMembers));
     } catch (e) {}
   }, [teamMembers]);
+
+  // Synchronize standup records dynamically whenever selected calendar date changes
+  useEffect(() => {
+    let mounted = true;
+    async function switchDateData() {
+      if (isLoadingBoard) return;
+      try {
+        const storedStandups = await loadBoardStandups(t, dateKey);
+        if (!mounted) return;
+
+        if (Array.isArray(boardData.members) && boardData.members.length > 0) {
+          const merged = boardData.members.map((bm) => {
+            const existing = storedStandups?.find(
+              (s) =>
+                s.id === bm.id ||
+                s.name.toLowerCase() === bm.name.toLowerCase() ||
+                (bm.username && s.name.toLowerCase() === bm.username.toLowerCase())
+            );
+
+            if (existing) {
+              return {
+                ...existing,
+                id: bm.id,
+                name: bm.name,
+                avatar: bm.avatar || existing.avatar,
+                avatarBg: bm.avatarBg || existing.avatarBg,
+                assignedCards: bm.assignedCards || [],
+              };
+            }
+
+            // Fresh member from board without standup submitted for this date
+            const defaultDoing = isToday
+              ? (bm.assignedCards || [])
+                  .filter((c) => c.status === "In Progress")
+                  .map((c) => ({
+                    id: c.id,
+                    tag: c.tag || `[${c.listName}]`,
+                    text: c.name,
+                    status: "In Progress",
+                    fromBoard: true,
+                  }))
+              : [];
+
+            return {
+              id: bm.id,
+              name: bm.name,
+              role: bm.role || "Board Contributor",
+              avatar: bm.avatar,
+              avatarBg: bm.avatarBg,
+              timestamp: "Pending",
+              status: "unsubmitted",
+              yesterdayItems: [],
+              todayTasks: defaultDoing,
+              hasBlocker: false,
+              blockerText: "",
+              assignedCards: bm.assignedCards || [],
+            };
+          });
+
+          setTeamMembers(merged);
+        } else if (storedStandups && storedStandups.length > 0) {
+          setTeamMembers(storedStandups);
+        }
+      } catch (e) {
+        console.warn("Failed to load standups for date", dateKey, e);
+      }
+    }
+
+    switchDateData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [dateKey, boardData.members, isLoadingBoard, isToday, t]);
+
 
   // Refresh Board Data handler
   async function handleRefreshBoard() {
@@ -515,18 +623,36 @@ export default function StandupApp({ t }) {
     }, 3500);
   }
 
-  // Date controls
-  function handleDateToggle(mode) {
-    setDateFilter(mode);
-    if (mode === "today") {
-      setSelectedDate("Monday, Oct 12, 2026");
-    } else {
-      setSelectedDate("Sunday, Oct 11, 2026");
-    }
+  // Dynamic Date controls
+  function handlePrevDay() {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() - 1);
+      return next;
+    });
+  }
+
+  function handleNextDay() {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+  }
+
+  function handleJumpToday() {
+    setCurrentDate(new Date());
+  }
+
+  function handleJumpYesterday() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    setCurrentDate(d);
   }
 
   // Open / Close modal
   function openLogModal() {
+    setFormDate(formatDateKey(currentDate));
     setIsLogModalOpen(true);
   }
 
@@ -632,7 +758,7 @@ export default function StandupApp({ t }) {
     setTeamMembers(updated);
 
     // Save update to Trello shared board storage & localStorage
-    await saveBoardStandups(t, updated);
+    await saveBoardStandups(t, updated, {}, dateKey);
 
     if (nextStatus === "Done") {
       showToast(`✓ Marked "${taskName.slice(0, 24)}..." as Done!`);
@@ -732,12 +858,17 @@ export default function StandupApp({ t }) {
 
     // Persist standup to Trello board shared storage and sync card badges
     const linkedCardIds = formLinkedCards.map((c) => c.cardId || c.id);
-    await saveBoardStandups(t, updated, {
-      linkedCardIds: linkedCardIds,
-      completed: true,
-      hasBlocker: hasBlocker,
-      blockerText: hasBlocker ? formBlockers.trim() : "",
-    });
+    await saveBoardStandups(
+      t,
+      updated,
+      {
+        linkedCardIds: linkedCardIds,
+        completed: true,
+        hasBlocker: hasBlocker,
+        blockerText: hasBlocker ? formBlockers.trim() : "",
+      },
+      formDate
+    );
 
     showToast(`✨ Standup published & synced to ${boardData.board.name} for ${targetName}!`);
   }
@@ -843,7 +974,7 @@ export default function StandupApp({ t }) {
               type="button"
               className="nav-arrow-btn"
               title="Previous Day"
-              onClick={() => handleDateToggle("yesterday")}
+              onClick={handlePrevDay}
             >
               <ChevronLeftIcon width={12} height={12} />
             </button>
@@ -852,7 +983,7 @@ export default function StandupApp({ t }) {
               type="button"
               className="nav-arrow-btn"
               title="Next Day"
-              onClick={() => handleDateToggle("today")}
+              onClick={handleNextDay}
             >
               <ChevronRightIcon width={12} height={12} />
             </button>
@@ -862,15 +993,15 @@ export default function StandupApp({ t }) {
           <div className="segment-pills">
             <button
               type="button"
-              className={`segment-btn ${dateFilter === "today" ? "active" : ""}`}
-              onClick={() => handleDateToggle("today")}
+              className={`segment-btn ${isToday ? "active" : ""}`}
+              onClick={handleJumpToday}
             >
               Today
             </button>
             <button
               type="button"
-              className={`segment-btn ${dateFilter === "yesterday" ? "active" : ""}`}
-              onClick={() => handleDateToggle("yesterday")}
+              className={`segment-btn ${isYesterday ? "active" : ""}`}
+              onClick={handleJumpYesterday}
             >
               Yesterday
             </button>
@@ -938,7 +1069,11 @@ export default function StandupApp({ t }) {
                 </div>
                 <span>Submitted</span>
               </div>
-              <span className="kpi-badge-trend">+15% streak</span>
+              <span className="kpi-badge-trend">
+                {metrics.participationPct === 100 && metrics.totalMembers > 0
+                  ? "🎉 100% Sync"
+                  : `${metrics.participationPct}% logged`}
+              </span>
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.submittedCount}</span>

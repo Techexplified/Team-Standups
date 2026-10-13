@@ -244,21 +244,31 @@ export async function fetchActualBoardData(t) {
 
 /**
  * Loads shared board standups from Trello shared storage and local storage.
+ * Supports date-specific storage (e.g., dateKey: "2026-10-13").
  *
  * @param {object} t - Trello Power-Up client
+ * @param {string} dateKey - Optional date key (YYYY-MM-DD)
  * @returns {Promise<Array<object>|null>}
  */
-export async function loadBoardStandups(t) {
-  // 1. Try Trello shared board storage
+export async function loadBoardStandups(t, dateKey = null) {
+  const storageKey = dateKey ? `daily_standups_${dateKey}` : "daily_standups_v2";
+  const localKey = dateKey ? `ds_team_standups_${dateKey}` : "ds_team_standups_v2";
+
+  // 1. Try Trello shared board storage for the specific date
   if (t && typeof t.get === "function") {
     try {
-      const stored = await t.get("board", "shared", "daily_standups_v2").catch(() => null);
+      const stored = await t.get("board", "shared", storageKey).catch(() => null);
       if (stored) {
-        if (typeof stored === "string") {
-          return JSON.parse(stored);
-        }
-        if (Array.isArray(stored)) {
-          return stored;
+        return typeof stored === "string" ? JSON.parse(stored) : stored;
+      }
+      // If dateKey was requested but empty, check if today matches latest
+      if (dateKey) {
+        const latest = await t.get("board", "shared", "daily_standups_v2").catch(() => null);
+        if (latest) {
+          const parsed = typeof latest === "string" ? JSON.parse(latest) : latest;
+          if (Array.isArray(parsed) && parsed.some((m) => m.dateKey === dateKey)) {
+            return parsed;
+          }
         }
       }
     } catch (e) {
@@ -268,9 +278,18 @@ export async function loadBoardStandups(t) {
 
   // 2. Fallback to localStorage
   try {
-    const local = localStorage.getItem("ds_team_standups_v2");
+    const local = localStorage.getItem(localKey);
     if (local) {
       return JSON.parse(local);
+    }
+    if (dateKey) {
+      const fallbackLocal = localStorage.getItem("ds_team_standups_v2");
+      if (fallbackLocal) {
+        const parsed = JSON.parse(fallbackLocal);
+        if (Array.isArray(parsed) && parsed.some((m) => m.dateKey === dateKey)) {
+          return parsed;
+        }
+      }
     }
   } catch (e) {}
 
@@ -283,17 +302,29 @@ export async function loadBoardStandups(t) {
  * @param {object} t - Trello Power-Up client
  * @param {Array<object>} standupData - Team members standup state
  * @param {object} opts - Optional linked card sync options
+ * @param {string} dateKey - Optional date key (YYYY-MM-DD)
  */
-export async function saveBoardStandups(t, standupData, opts = {}) {
-  // 1. Persist to localStorage for fast local retrieval
+export async function saveBoardStandups(t, standupData, opts = {}, dateKey = null) {
+  const storageKey = dateKey ? `daily_standups_${dateKey}` : "daily_standups_v2";
+  const localKey = dateKey ? `ds_team_standups_${dateKey}` : "ds_team_standups_v2";
+
+  // Attach dateKey metadata to records
+  const enrichedData = standupData.map((m) => ({
+    ...m,
+    dateKey: dateKey || m.dateKey || new Date().toISOString().split("T")[0],
+  }));
+
+  // 1. Persist to localStorage
   try {
-    localStorage.setItem("ds_team_standups_v2", JSON.stringify(standupData));
+    localStorage.setItem(localKey, JSON.stringify(enrichedData));
+    localStorage.setItem("ds_team_standups_v2", JSON.stringify(enrichedData));
   } catch (e) {}
 
   // 2. Persist to Trello Board Shared storage
   if (t && typeof t.set === "function") {
     try {
-      await t.set("board", "shared", "daily_standups_v2", JSON.stringify(standupData)).catch(() => {});
+      await t.set("board", "shared", storageKey, JSON.stringify(enrichedData)).catch(() => {});
+      await t.set("board", "shared", "daily_standups_v2", JSON.stringify(enrichedData)).catch(() => {});
       await t.set("board", "shared", "dailyStandupsLastUpdate", Date.now()).catch(() => {});
     } catch (e) {
       console.warn("Failed to persist standups to Trello board storage", e);
