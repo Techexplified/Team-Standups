@@ -4,13 +4,13 @@
    ========================================================================== */
 
 :root {
-  --ds-bg: #0b0f19;
-  --ds-surface-nav: rgba(15, 21, 35, 0.95);
-  --ds-surface-card: #131929;
-  --ds-surface-card-hover: #172033;
-  --ds-surface-card-subtle: #0f1524;
-  --ds-surface-elevated: #1a233a;
-  --ds-surface-input: #0a0e18;
+  --ds-bg: #0e121b;
+  --ds-surface-nav: #131824;
+  --ds-surface-card: #171d2b;
+  --ds-surface-card-hover: #1c2333;
+  --ds-surface-card-subtle: #121622;
+  --ds-surface-elevated: #202738;
+  --ds-surface-input: #10141e;
 
   --ds-border: rgba(255, 255, 255, 0.08);
   --ds-border-light: rgba(255, 255, 255, 0.14);
@@ -30,17 +30,17 @@
   --ds-emerald-bg: rgba(16, 185, 129, 0.12);
   --ds-emerald-border: rgba(16, 185, 129, 0.32);
 
-  --ds-crimson: #ef4444;
-  --ds-crimson-bg: rgba(239, 68, 68, 0.14);
-  --ds-crimson-border: rgba(239, 68, 68, 0.38);
+  --ds-crimson: #f43f5e;
+  --ds-crimson-bg: rgba(244, 63, 94, 0.12);
+  --ds-crimson-border: rgba(244, 63, 94, 0.32);
 
   --ds-amber: #f59e0b;
   --ds-amber-bg: rgba(245, 158, 11, 0.12);
-  --ds-amber-border: rgba(245, 158, 11, 0.35);
+  --ds-amber-border: rgba(245, 158, 11, 0.32);
 
   --ds-blue: #3b82f6;
-  --ds-blue-bg: rgba(59, 130, 246, 0.14);
-  --ds-blue-border: rgba(59, 130, 246, 0.35);
+  --ds-blue-bg: rgba(59, 130, 246, 0.12);
+  --ds-blue-border: rgba(59, 130, 246, 0.32);
 
   --ds-radius-sm: 6px;
   --ds-radius-md: 10px;
@@ -78,8 +78,8 @@ html, body {
   overflow-x: hidden;
   background-color: var(--ds-bg);
   background-image: 
-    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 65%),
-    radial-gradient(ellipse at 85% 100%, rgba(56, 189, 248, 0.06) 0%, transparent 55%);
+    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 65%),
+    radial-gradient(ellipse at 85% 100%, rgba(56, 189, 248, 0.04) 0%, transparent 55%);
   background-attachment: fixed;
   color: var(--ds-text-primary);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -425,15 +425,34 @@ html, body {
   color: var(--ds-emerald);
 }
 
-.kpi-blockers .kpi-icon-pill {
+.kpi-blockers.has-blockers .kpi-icon-pill {
   background: var(--ds-crimson-bg);
   color: var(--ds-crimson);
 }
-.kpi-blockers {
-  border-color: rgba(239, 68, 68, 0.28);
+.kpi-blockers.has-blockers {
+  border-color: rgba(244, 63, 94, 0.28);
 }
-.kpi-blockers .kpi-number {
-  color: #f87171;
+.kpi-blockers.has-blockers .kpi-number {
+  color: #fb7185;
+}
+
+.kpi-blockers-clear .kpi-icon-pill {
+  background: var(--ds-emerald-bg);
+  color: var(--ds-emerald);
+}
+.kpi-blockers-clear {
+  border-color: var(--ds-border);
+}
+.kpi-blockers-clear .kpi-number {
+  color: #34d399;
+}
+.kpi-badge-clear {
+  background: var(--ds-emerald-bg);
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--ds-radius-full);
 }
 
 /* ==========================================================================
@@ -576,9 +595,8 @@ html, body {
 
 /* Unsubmitted teammate card */
 .standup-member-card.is-unsubmitted {
-  border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(19, 25, 41, 0.5);
+  background: rgba(23, 29, 43, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* Card Header */
@@ -659,9 +677,9 @@ html, body {
 }
 
 .status-pill.unsubmitted {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--ds-text-secondary);
-  border: 1px solid var(--ds-border);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 /* Crimson Blocker Alert Banner */
@@ -822,53 +840,53 @@ html, body {
 }
 
 .unsubmitted-icon-bubble {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ds-primary-sky);
-  margin-bottom: 14px;
+  color: #fbbf24;
+  margin-bottom: 12px;
 }
 
 .unsubmitted-headline {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--ds-text-primary);
-  margin: 0 0 4px 0;
+  color: #f1f5f9;
+  margin: 0 0 5px 0;
 }
 
 .unsubmitted-helper {
   font-size: 12px;
-  color: var(--ds-text-muted);
+  color: #94a3b8;
   margin: 0 0 16px 0;
-  max-width: 240px;
+  max-width: 250px;
   line-height: 1.45;
 }
 
 .btn-send-nudge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  background: var(--ds-surface-elevated);
-  border: 1px solid var(--ds-border-light);
-  color: var(--ds-text-primary);
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  color: #c7d2fe;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  padding: 8px 18px;
-  border-radius: var(--ds-radius-md);
+  padding: 7px 16px;
+  border-radius: var(--ds-radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-send-nudge:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.24);
+  border-color: rgba(99, 102, 241, 0.48);
+  color: #ffffff;
   transform: translateY(-1px);
 }
 

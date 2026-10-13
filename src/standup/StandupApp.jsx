@@ -1169,7 +1169,11 @@ export default function StandupApp({ t }) {
               <span className="kpi-number">{metrics.submittedCount}</span>
               <span className="kpi-total">/ {metrics.totalMembers} members</span>
             </div>
-            <p className="kpi-subtitle">{metrics.unsubmittedCount} pending updates</p>
+            <p className="kpi-subtitle">
+              {metrics.unsubmittedCount === 0 && metrics.totalMembers > 0
+                ? "🎉 All teammates checked in"
+                : `${metrics.unsubmittedCount} awaiting check-in`}
+            </p>
           </div>
 
           {/* Card 2: Active Doing Cards */}
@@ -1207,20 +1211,31 @@ export default function StandupApp({ t }) {
           </div>
 
           {/* Card 4: Active Blockers */}
-          <div className="kpi-card kpi-blockers">
+          <div className={`kpi-card ${metrics.blockersCount > 0 ? "kpi-blockers has-blockers" : "kpi-blockers-clear"}`}>
             <div className="kpi-card-header">
               <div className="kpi-card-title-group">
                 <div className="kpi-icon-pill">
-                  <AlertTriangleIcon width={13} height={13} />
+                  {metrics.blockersCount > 0 ? (
+                    <AlertTriangleIcon width={13} height={13} />
+                  ) : (
+                    <CheckIcon width={13} height={13} />
+                  )}
                 </div>
-                <span style={{ color: "#fca5a5" }}>Active Blockers</span>
+                <span style={{ color: metrics.blockersCount > 0 ? "#fca5a5" : "inherit" }}>Active Blockers</span>
               </div>
+              {metrics.blockersCount === 0 && (
+                <span className="kpi-badge-clear">All Clear</span>
+              )}
             </div>
             <div className="kpi-card-value-line">
               <span className="kpi-number">{metrics.blockersCount}</span>
-              <span className="kpi-total" style={{ color: "#fca5a5" }}>critical</span>
+              <span className="kpi-total" style={{ color: metrics.blockersCount > 0 ? "#fca5a5" : "inherit" }}>
+                {metrics.blockersCount > 0 ? "critical" : "reported"}
+              </span>
             </div>
-            <p className="kpi-subtitle" style={{ color: "#f87171" }}>Requires team attention</p>
+            <p className="kpi-subtitle" style={{ color: metrics.blockersCount > 0 ? "#f87171" : "inherit" }}>
+              {metrics.blockersCount > 0 ? "Requires team attention" : "No active blockers reported"}
+            </p>
           </div>
         </section>
 
@@ -1357,7 +1372,7 @@ export default function StandupApp({ t }) {
                           Blocker
                         </span>
                       ) : isUnsubmitted ? (
-                        <span className="status-pill unsubmitted">Pending</span>
+                        <span className="status-pill unsubmitted">Awaiting Update</span>
                       ) : (
                         <span className="status-pill submitted">
                           <CheckIcon width={12} height={12} />
@@ -1371,13 +1386,13 @@ export default function StandupApp({ t }) {
                   {isUnsubmitted ? (
                     <div className="unsubmitted-content-box">
                       <div className="unsubmitted-icon-bubble">
-                        <ClockIcon width={20} height={20} />
+                        <ClockIcon width={18} height={18} />
                       </div>
-                      <h4 className="unsubmitted-headline">Standup Pending</h4>
+                      <h4 className="unsubmitted-headline">Awaiting Today's Check-in</h4>
                       <p className="unsubmitted-helper">
                         {assignedCardsCount > 0
-                          ? `${assignedCardsCount} board card${assignedCardsCount > 1 ? "s" : ""} assigned in this sprint. Send a reminder nudge.`
-                          : "No daily update submitted yet for today. Send a friendly reminder nudge."}
+                          ? `${member.name.split(" ")[0]} has ${assignedCardsCount} active board task${assignedCardsCount > 1 ? "s" : ""}. Send a friendly reminder to check in.`
+                          : `${member.name.split(" ")[0]} hasn't shared their daily update yet today.`}
                       </p>
                       <button
                         type="button"
@@ -1385,7 +1400,7 @@ export default function StandupApp({ t }) {
                         onClick={() => handleSendNudge(member.name)}
                       >
                         <BellIcon width={13} height={13} />
-                        <span>Send Reminder Nudge</span>
+                        <span>Send Friendly Reminder</span>
                       </button>
                     </div>
                   ) : (
