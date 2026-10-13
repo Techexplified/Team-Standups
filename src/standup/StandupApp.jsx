@@ -987,6 +987,7 @@ export default function StandupApp({ t }) {
   // Open Edit Modal pre-populated with member's current standup
   function handleOpenEditModal(member) {
     setFormTeammate(member.name);
+    setFormDate(dateKey);
     setFormYesterday((member.yesterdayItems || []).join("\n"));
 
     // Split tasks into attached board cards and custom text tasks
@@ -1055,14 +1056,19 @@ export default function StandupApp({ t }) {
       formBlockers.trim().toLowerCase() !== "'none'"
     );
 
+    const isCompletelyEmpty =
+      newYesterdayList.length === 0 &&
+      combinedTasks.length === 0 &&
+      !hasBlocker;
+
     const updated = teamMembers.map((m) => {
-      if (m.name === targetName || (targetName === "Alex Rivera" && m.id === "m0")) {
+      if (m.name === targetName || m.id === activeFormMember?.id || (targetName === "Alex Rivera" && m.id === "m0")) {
         return {
           ...m,
-          status: "submitted",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          yesterdayItems: newYesterdayList.length > 0 ? newYesterdayList : (m.yesterdayItems.length > 0 ? m.yesterdayItems : ["Completed planned tasks"]),
-          todayTasks: combinedTasks.length > 0 ? combinedTasks : m.todayTasks,
+          status: isCompletelyEmpty ? "unsubmitted" : "submitted",
+          timestamp: isCompletelyEmpty ? "Pending" : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          yesterdayItems: newYesterdayList,
+          todayTasks: combinedTasks,
           hasBlocker: hasBlocker,
           blockerText: hasBlocker ? formBlockers.trim() : "",
         };
@@ -1080,14 +1086,14 @@ export default function StandupApp({ t }) {
       updated,
       {
         linkedCardIds: linkedCardIds,
-        completed: true,
+        completed: !isCompletelyEmpty,
         hasBlocker: hasBlocker,
         blockerText: hasBlocker ? formBlockers.trim() : "",
       },
-      formDate
+      formDate || dateKey
     );
 
-    showToast(`✨ Standup published & synced to ${boardData.board.name} for ${targetName}!`);
+    showToast(`✨ Standup updated & synced for ${targetName}!`);
   }
 
   // Compact Card Back Section mode
@@ -1614,74 +1620,78 @@ export default function StandupApp({ t }) {
                       )}
 
                       {/* Yesterday's Accomplishments */}
-                      <div className="card-section">
-                        <p className="section-label">Yesterday</p>
-                        <div className="task-checklist">
-                          {member.yesterdayItems?.map((item, idx) => (
-                            <div key={idx} className="checklist-item">
-                              <CheckIcon width={14} height={14} className="checklist-icon" />
-                              <span>{item}</span>
-                            </div>
-                          ))}
+                      {Array.isArray(member.yesterdayItems) && member.yesterdayItems.length > 0 && (
+                        <div className="card-section">
+                          <p className="section-label">Yesterday</p>
+                          <div className="task-checklist">
+                            {member.yesterdayItems.map((item, idx) => (
+                              <div key={idx} className="checklist-item">
+                                <CheckIcon width={14} height={14} className="checklist-icon" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Doing Today (Interactive Linked Trello Card Pills) */}
-                      <div className="card-section">
-                        <p className="section-label">Doing Today</p>
-                        <div className="linked-cards-list">
-                          {member.todayTasks?.map((task) => {
-                            let badgeClass = "badge-in-progress";
-                            if (task.status === "Done") badgeClass = "badge-done";
-                            if (task.status === "To Do") badgeClass = "badge-todo";
-                            if (task.status === "Blocked") badgeClass = "badge-blocked";
+                      {Array.isArray(member.todayTasks) && member.todayTasks.length > 0 && (
+                        <div className="card-section">
+                          <p className="section-label">Doing Today</p>
+                          <div className="linked-cards-list">
+                            {member.todayTasks.map((task) => {
+                              let badgeClass = "badge-in-progress";
+                              if (task.status === "Done") badgeClass = "badge-done";
+                              if (task.status === "To Do") badgeClass = "badge-todo";
+                              if (task.status === "Blocked") badgeClass = "badge-blocked";
 
-                            const isDone = task.status === "Done";
+                              const isDone = task.status === "Done";
 
-                            return (
-                              <div
-                                key={task.id}
-                                className={`trello-card-pill ${isDone ? "is-task-done" : ""}`}
-                              >
-                                <div className="card-pill-left">
-                                  {isDone ? (
-                                    <CheckCircleIcon
-                                      width={14}
-                                      height={14}
-                                      style={{ color: "#10b981", flexShrink: 0 }}
-                                    />
-                                  ) : (
-                                    <TrelloCardIcon
-                                      width={13}
-                                      height={13}
-                                      style={{ color: "#38bdf8", flexShrink: 0 }}
-                                    />
-                                  )}
-                                  <span className="card-pill-tag">{task.tag}</span>
-                                  <span className={`card-pill-text ${isDone ? "is-completed-text" : ""}`}>
-                                    {task.text}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  className={`card-pill-badge ${badgeClass} interactive-toggle-badge`}
-                                  onClick={() => handleToggleTaskStatusDirect(member.id, task.id)}
-                                  title={`Click to mark as ${isDone ? "In Progress" : "Done"}`}
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`trello-card-pill ${isDone ? "is-task-done" : ""}`}
                                 >
-                                  {isDone ? (
-                                    <>
-                                      <CheckIcon width={11} height={11} />
-                                      <span>Done</span>
-                                    </>
-                                  ) : (
-                                    <span>In Progress</span>
-                                  )}
-                                </button>
-                              </div>
-                            );
-                          })}
+                                  <div className="card-pill-left">
+                                    {isDone ? (
+                                      <CheckCircleIcon
+                                        width={14}
+                                        height={14}
+                                        style={{ color: "#10b981", flexShrink: 0 }}
+                                      />
+                                    ) : (
+                                      <TrelloCardIcon
+                                        width={13}
+                                        height={13}
+                                        style={{ color: "#38bdf8", flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <span className="card-pill-tag">{task.tag}</span>
+                                    <span className={`card-pill-text ${isDone ? "is-completed-text" : ""}`}>
+                                      {task.text}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className={`card-pill-badge ${badgeClass} interactive-toggle-badge`}
+                                    onClick={() => handleToggleTaskStatusDirect(member.id, task.id)}
+                                    title={`Click to mark as ${isDone ? "In Progress" : "Done"}`}
+                                  >
+                                    {isDone ? (
+                                      <>
+                                        <CheckIcon width={11} height={11} />
+                                        <span>Done</span>
+                                      </>
+                                    ) : (
+                                      <span>In Progress</span>
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Blockers & Next Steps */}
                       {!member.hasBlocker && (
