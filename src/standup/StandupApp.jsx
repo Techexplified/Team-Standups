@@ -602,25 +602,24 @@ export default function StandupApp({ t }) {
     const unsubmittedCount = totalMembers - submittedCount;
     const blockersCount = teamMembers.filter((m) => m.hasBlocker).length;
 
-    // Active doing cards count
+    // Count accomplishments and active tasks reported in standups
     let activeDoingCardsCount = 0;
     let doneYesterdayCount = 0;
 
     teamMembers.forEach((m) => {
-      if (Array.isArray(m.todayTasks)) {
-        activeDoingCardsCount += m.todayTasks.filter((t) => t.status === "In Progress").length;
-      }
-      if (Array.isArray(m.yesterdayItems)) {
-        doneYesterdayCount += m.yesterdayItems.length;
+      if (m.status === "submitted") {
+        if (Array.isArray(m.todayTasks)) {
+          activeDoingCardsCount += m.todayTasks.filter((t) => t.status === "In Progress").length;
+        }
+        if (Array.isArray(m.yesterdayItems)) {
+          doneYesterdayCount += m.yesterdayItems.length;
+        }
       }
     });
 
-    // Fall back to actual board cards if no standup has been submitted yet today
+    // If no standup updates logged yet, active doing can reflect board in-progress tasks
     if (activeDoingCardsCount === 0 && Array.isArray(boardData.cards)) {
       activeDoingCardsCount = boardData.cards.filter((c) => c.status === "In Progress").length;
-    }
-    if (doneYesterdayCount === 0 && Array.isArray(boardData.cards)) {
-      doneYesterdayCount = boardData.cards.filter((c) => c.status === "Done").length;
     }
 
     const participationPct = totalMembers > 0 ? Math.round((submittedCount / totalMembers) * 100) : 0;
