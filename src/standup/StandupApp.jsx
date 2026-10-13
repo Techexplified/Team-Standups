@@ -1208,13 +1208,21 @@ export default function StandupApp({ t }) {
                                 className={`trello-card-pill ${isDone ? "is-task-done" : ""}`}
                               >
                                 <div className="card-pill-left">
-                                  <TrelloCardIcon
-                                    width={13}
-                                    height={13}
-                                    style={{ color: isDone ? "#10b981" : "#38bdf8" }}
-                                  />
+                                  {isDone ? (
+                                    <CheckCircleIcon
+                                      width={14}
+                                      height={14}
+                                      style={{ color: "#10b981", flexShrink: 0 }}
+                                    />
+                                  ) : (
+                                    <TrelloCardIcon
+                                      width={13}
+                                      height={13}
+                                      style={{ color: "#38bdf8", flexShrink: 0 }}
+                                    />
+                                  )}
                                   <span className="card-pill-tag">{task.tag}</span>
-                                  <span className={`card-pill-text ${isDone ? "strikethrough-text" : ""}`}>
+                                  <span className={`card-pill-text ${isDone ? "is-completed-text" : ""}`}>
                                     {task.text}
                                   </span>
                                 </div>
