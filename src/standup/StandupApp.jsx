@@ -26,6 +26,8 @@ import {
   EditIcon,
   MessageSquareIcon,
   SendIcon,
+  SunIcon,
+  MoonIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
@@ -299,6 +301,23 @@ export default function StandupApp({ t }) {
 
   // Active comment input text per member card: { [memberId]: "draft text" }
   const [commentInputs, setCommentInputs] = useState({});
+
+  // Interactive Theme Mode: "dark" (Vibrant Dark) | "light" (Fresh Light)
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("ds_color_theme") || "dark";
+    } catch (e) {
+      return "dark";
+    }
+  });
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      localStorage.setItem("ds_color_theme", next);
+    } catch (e) {}
+  }
 
   // Current User profile & Auth
   const [currentUser, setCurrentUser] = useState(null);
@@ -596,6 +615,14 @@ export default function StandupApp({ t }) {
       }
     });
 
+    // Fall back to actual board cards if no standup has been submitted yet today
+    if (activeDoingCardsCount === 0 && Array.isArray(boardData.cards)) {
+      activeDoingCardsCount = boardData.cards.filter((c) => c.status === "In Progress").length;
+    }
+    if (doneYesterdayCount === 0 && Array.isArray(boardData.cards)) {
+      doneYesterdayCount = boardData.cards.filter((c) => c.status === "Done").length;
+    }
+
     const participationPct = totalMembers > 0 ? Math.round((submittedCount / totalMembers) * 100) : 0;
 
     return {
@@ -607,7 +634,7 @@ export default function StandupApp({ t }) {
       doneYesterdayCount,
       participationPct,
     };
-  }, [teamMembers]);
+  }, [teamMembers, boardData.cards]);
 
   // Filtered members list
   const filteredMembers = useMemo(() => {
@@ -1026,7 +1053,7 @@ export default function StandupApp({ t }) {
   const gaugeOffset = gaugeCircumference - (metrics.participationPct / 100) * gaugeCircumference;
 
   return (
-    <div className="standup-app-container">
+    <div className={`standup-app-container theme-${theme}`}>
       {/* ====================================================================
           TOP NAVBAR / HEADER
           ==================================================================== */}
@@ -1135,6 +1162,26 @@ export default function StandupApp({ t }) {
               <span className="gauge-subtext">({metrics.submittedCount}/{metrics.totalMembers})</span>
             </span>
           </div>
+
+          {/* Interactive Color Mode Toggle */}
+          <button
+            type="button"
+            className="btn-theme-toggle"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+          >
+            {theme === "dark" ? (
+              <>
+                <SunIcon width={13} height={13} style={{ color: "#fbbf24" }} />
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <MoonIcon width={13} height={13} style={{ color: "#6366f1" }} />
+                <span>Dark</span>
+              </>
+            )}
+          </button>
 
           {/* Primary Action Button */}
           <button type="button" className="btn-log-standup" onClick={openLogModal}>
@@ -1272,28 +1319,28 @@ export default function StandupApp({ t }) {
           <div className="toolbar-filter-chips">
             <button
               type="button"
-              className={`filter-chip ${activeTab === "all" ? "active" : ""}`}
+              className={`filter-chip chip-all ${activeTab === "all" ? "active" : ""}`}
               onClick={() => setActiveTab("all")}
             >
               All ({metrics.totalMembers})
             </button>
             <button
               type="button"
-              className={`filter-chip ${activeTab === "submitted" ? "active" : ""}`}
+              className={`filter-chip chip-submitted ${activeTab === "submitted" ? "active" : ""}`}
               onClick={() => setActiveTab("submitted")}
             >
               Submitted ({metrics.submittedCount})
             </button>
             <button
               type="button"
-              className={`filter-chip ${activeTab === "unsubmitted" ? "active" : ""}`}
+              className={`filter-chip chip-unsubmitted ${activeTab === "unsubmitted" ? "active" : ""}`}
               onClick={() => setActiveTab("unsubmitted")}
             >
-              Unsubmitted ({metrics.unsubmittedCount})
+              Awaiting ({metrics.unsubmittedCount})
             </button>
             <button
               type="button"
-              className={`filter-chip ${activeTab === "blockers" ? "active" : ""}`}
+              className={`filter-chip chip-blockers ${activeTab === "blockers" ? "active" : ""}`}
               onClick={() => setActiveTab("blockers")}
             >
               Blockers ({metrics.blockersCount})
@@ -1322,6 +1369,9 @@ export default function StandupApp({ t }) {
                   key={member.id}
                   className={`standup-member-card ${isUnsubmitted ? "is-unsubmitted" : ""}`}
                 >
+                  {/* Signature Member Accent Strip */}
+                  <div className="card-top-accent-bar" style={{ background: member.avatarBg }} />
+
                   {/* Card Header */}
                   <div className="card-member-header">
                     <div className="member-identity">
@@ -1385,23 +1435,58 @@ export default function StandupApp({ t }) {
                   {/* UN-SUBMITTED STATE */}
                   {isUnsubmitted ? (
                     <div className="unsubmitted-content-box">
-                      <div className="unsubmitted-icon-bubble">
-                        <ClockIcon width={18} height={18} />
+                      <div className="unsubmitted-header-row">
+                        <div className="unsubmitted-icon-bubble">
+                          <ClockIcon width={16} height={16} />
+                        </div>
+                        <div className="unsubmitted-header-text">
+                          <h4 className="unsubmitted-headline">Awaiting Today's Check-in</h4>
+                          <p className="unsubmitted-helper">
+                            {assignedCardsCount > 0
+                              ? `${member.name.split(" ")[0]} has ${assignedCardsCount} active board task${assignedCardsCount > 1 ? "s" : ""}:`
+                              : `${member.name.split(" ")[0]} hasn't shared their daily update yet today.`}
+                          </p>
+                        </div>
                       </div>
-                      <h4 className="unsubmitted-headline">Awaiting Today's Check-in</h4>
-                      <p className="unsubmitted-helper">
-                        {assignedCardsCount > 0
-                          ? `${member.name.split(" ")[0]} has ${assignedCardsCount} active board task${assignedCardsCount > 1 ? "s" : ""}. Send a friendly reminder to check in.`
-                          : `${member.name.split(" ")[0]} hasn't shared their daily update yet today.`}
-                      </p>
-                      <button
-                        type="button"
-                        className="btn-send-nudge"
-                        onClick={() => handleSendNudge(member.name)}
-                      >
-                        <BellIcon width={13} height={13} />
-                        <span>Send Friendly Reminder</span>
-                      </button>
+
+                      {/* Display assigned board cards if any */}
+                      {assignedCardsCount > 0 && (
+                        <div className="unsubmitted-assigned-preview">
+                          {member.assignedCards.slice(0, 3).map((c) => (
+                            <div key={c.id} className="preview-card-pill">
+                              <TrelloCardIcon width={12} height={12} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                              <span className="preview-card-tag">{c.tag || `[${c.listName || "DOING"}]`}</span>
+                              <span className="preview-card-title">{c.name}</span>
+                            </div>
+                          ))}
+                          {assignedCardsCount > 3 && (
+                            <span className="preview-more-count">+{assignedCardsCount - 3} more assigned tasks</span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="unsubmitted-actions-row">
+                        <button
+                          type="button"
+                          className="btn-quick-log"
+                          onClick={() => {
+                            setFormTeammate(member.name);
+                            openLogModal();
+                          }}
+                          title={`Log standup for ${member.name}`}
+                        >
+                          <PlusIcon width={12} height={12} />
+                          <span>Log Standup</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-send-nudge"
+                          onClick={() => handleSendNudge(member.name)}
+                        >
+                          <BellIcon width={12} height={12} />
+                          <span>Nudge</span>
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     /* SUBMITTED STATE */
