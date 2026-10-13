@@ -21,6 +21,7 @@ import {
   ClockIcon,
   RefreshCwIcon,
   LayersIcon,
+  EditIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
@@ -608,6 +609,68 @@ export default function StandupApp({ t }) {
     setFormLinkedCards(formLinkedCards.filter((c) => c.id !== id));
   }
 
+  // 1-Click Direct Toggle for Tasks on the Dashboard Card
+  async function handleToggleTaskStatusDirect(memberId, taskId) {
+    let nextStatus = "";
+    let taskName = "";
+
+    const updated = teamMembers.map((m) => {
+      if (m.id === memberId) {
+        const nextTasks = (m.todayTasks || []).map((t) => {
+          if (t.id === taskId) {
+            nextStatus = t.status === "Done" ? "In Progress" : "Done";
+            taskName = t.text;
+            return { ...t, status: nextStatus };
+          }
+          return t;
+        });
+        return { ...m, todayTasks: nextTasks };
+      }
+      return m;
+    });
+
+    setTeamMembers(updated);
+
+    // Save update to Trello shared board storage & localStorage
+    await saveBoardStandups(t, updated);
+
+    if (nextStatus === "Done") {
+      showToast(`✓ Marked "${taskName.slice(0, 24)}..." as Done!`);
+    } else {
+      showToast(`↺ Moved "${taskName.slice(0, 24)}..." back to In Progress`);
+    }
+  }
+
+  // Open Edit Modal pre-populated with member's current standup
+  function handleOpenEditModal(member) {
+    setFormTeammate(member.name);
+    setFormYesterday((member.yesterdayItems || []).join("\n"));
+
+    // Split tasks into attached board cards and custom text tasks
+    const boardCardsAttached = [];
+    const customLines = [];
+
+    (member.todayTasks || []).forEach((task) => {
+      if (task.fromBoard || task.cardId || (task.tag && task.tag !== "[DOING]")) {
+        boardCardsAttached.push({
+          id: task.id,
+          cardId: task.cardId || task.id,
+          tag: task.tag,
+          title: task.text,
+          status: task.status,
+          fromBoard: Boolean(task.fromBoard),
+        });
+      } else {
+        customLines.push(task.text);
+      }
+    });
+
+    setFormLinkedCards(boardCardsAttached);
+    setFormDoingToday(customLines.join("\n"));
+    setFormBlockers(member.blockerText || "");
+    setIsLogModalOpen(true);
+  }
+
   // Submit standup from modal
   async function handleSaveStandup(e) {
     e.preventDefault();
@@ -1050,20 +1113,33 @@ export default function StandupApp({ t }) {
                       </div>
                     </div>
 
-                    {/* Status Pill */}
-                    {member.hasBlocker ? (
-                      <span className="status-pill blocker">
-                        <AlertTriangleIcon width={12} height={12} />
-                        Blocker
-                      </span>
-                    ) : isUnsubmitted ? (
-                      <span className="status-pill unsubmitted">Pending</span>
-                    ) : (
-                      <span className="status-pill submitted">
-                        <CheckIcon width={12} height={12} />
-                        Submitted
-                      </span>
-                    )}
+                    {/* Status Pill & Quick Edit */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {!isUnsubmitted && (
+                        <button
+                          type="button"
+                          className="btn-edit-standup"
+                          onClick={() => handleOpenEditModal(member)}
+                          title={`Edit standup update for ${member.name}`}
+                        >
+                          <EditIcon width={11} height={11} />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      {member.hasBlocker ? (
+                        <span className="status-pill blocker">
+                          <AlertTriangleIcon width={12} height={12} />
+                          Blocker
+                        </span>
+                      ) : isUnsubmitted ? (
+                        <span className="status-pill unsubmitted">Pending</span>
+                      ) : (
+                        <span className="status-pill submitted">
+                          <CheckIcon width={12} height={12} />
+                          Submitted
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* UN-SUBMITTED STATE */}
@@ -1114,7 +1190,7 @@ export default function StandupApp({ t }) {
                         </div>
                       </div>
 
-                      {/* Doing Today (Linked Trello Card Pills) */}
+                      {/* Doing Today (Interactive Linked Trello Card Pills) */}
                       <div className="card-section">
                         <p className="section-label">Doing Today</p>
                         <div className="linked-cards-list">
@@ -1124,14 +1200,39 @@ export default function StandupApp({ t }) {
                             if (task.status === "To Do") badgeClass = "badge-todo";
                             if (task.status === "Blocked") badgeClass = "badge-blocked";
 
+                            const isDone = task.status === "Done";
+
                             return (
-                              <div key={task.id} className="trello-card-pill">
+                              <div
+                                key={task.id}
+                                className={`trello-card-pill ${isDone ? "is-task-done" : ""}`}
+                              >
                                 <div className="card-pill-left">
-                                  <TrelloCardIcon width={13} height={13} style={{ color: "#38bdf8" }} />
+                                  <TrelloCardIcon
+                                    width={13}
+                                    height={13}
+                                    style={{ color: isDone ? "#10b981" : "#38bdf8" }}
+                                  />
                                   <span className="card-pill-tag">{task.tag}</span>
-                                  <span className="card-pill-text">{task.text}</span>
+                                  <span className={`card-pill-text ${isDone ? "strikethrough-text" : ""}`}>
+                                    {task.text}
+                                  </span>
                                 </div>
-                                <span className={`card-pill-badge ${badgeClass}`}>{task.status}</span>
+                                <button
+                                  type="button"
+                                  className={`card-pill-badge ${badgeClass} interactive-toggle-badge`}
+                                  onClick={() => handleToggleTaskStatusDirect(member.id, task.id)}
+                                  title={`Click to mark as ${isDone ? "In Progress" : "Done"}`}
+                                >
+                                  {isDone ? (
+                                    <>
+                                      <CheckIcon width={11} height={11} />
+                                      <span>Done</span>
+                                    </>
+                                  ) : (
+                                    <span>In Progress</span>
+                                  )}
+                                </button>
                               </div>
                             );
                           })}

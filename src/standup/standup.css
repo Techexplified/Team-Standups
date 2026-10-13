@@ -1665,3 +1665,67 @@ html, body {
   cursor: default;
 }
 
+/* ==========================================================================
+   INTERACTIVE 1-CLICK TASK TOGGLE & QUICK EDIT STYLES
+   ========================================================================== */
+.card-pill-badge.interactive-toggle-badge {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.card-pill-badge.interactive-toggle-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.badge-in-progress.interactive-toggle-badge:hover {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.badge-done.interactive-toggle-badge:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.trello-card-pill.is-task-done {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.strikethrough-text {
+  color: var(--ds-text-muted);
+  text-decoration: line-through;
+}
+
+/* Quick Edit Standup Button on Member Card Header */
+.btn-edit-standup {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text-secondary);
+  border-radius: var(--ds-radius-full);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-standup:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: var(--ds-primary-sky);
+}
+
+
