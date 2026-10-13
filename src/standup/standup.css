@@ -1025,6 +1025,19 @@ html, body {
   transform: translateY(-1px);
 }
 
+.btn-send-nudge.is-reminded {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  cursor: default;
+  transform: none !important;
+}
+
+.btn-send-nudge:disabled {
+  opacity: 0.9;
+  cursor: default;
+}
+
 /* ==========================================================================
    MODAL DIALOG: LOG DAILY STANDUP
    ========================================================================== */
@@ -2380,6 +2393,12 @@ html, body {
   background: #f1f5f9;
   border-color: #cbd5e1;
   color: #334155;
+}
+
+.standup-app-container.theme-light .btn-send-nudge.is-reminded {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
 }
 
 .standup-app-container.theme-light .card-comments-section {

@@ -115,3 +115,23 @@ export function getBoardCards(t, boardId) {
     },
   });
 }
+
+/**
+ * Posts a standup reminder comment on a Trello card with an @mention to trigger native Trello push, email, and app notifications.
+ * @param {object} t - Trello Power-Up client
+ * @param {string} cardId - Target card ID
+ * @param {string} username - Target member's Trello username (without leading @)
+ * @param {string} senderName - Name of the teammate triggering the reminder
+ * @returns {Promise<object>}
+ */
+export async function sendTrelloCardNudge(t, cardId, username, senderName = "A teammate") {
+  const cleanUsername = username ? username.replace(/^@/, "").trim() : "";
+  const mention = cleanUsername ? `@${cleanUsername} ` : "";
+  const commentText = `${mention}👋 Friendly reminder from ${senderName || "your team"} to submit your daily standup update on this board!`;
+
+  return apiFetch(t, `/cards/${cardId}/actions/comments`, {
+    method: "POST",
+    body: { text: commentText },
+  });
+}
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { isAuthorized } from "../lib/auth.js";
-import { getCurrentMember } from "../lib/trelloApi.js";
+import { getCurrentMember, sendTrelloCardNudge } from "../lib/trelloApi.js";
 import {
   fetchActualBoardData,
   loadBoardStandups,
@@ -313,6 +313,25 @@ export default function StandupApp({ t }) {
       [memberId]: !prev[memberId],
     }));
   }
+
+  // Cooldown tracker for reminder nudges: { [memberId]: { timestamp, timeStr } }
+  const [nudgedMembers, setNudgedMembers] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(`ds_nudged_${dateKey}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`ds_nudged_${dateKey}`);
+      setNudgedMembers(saved ? JSON.parse(saved) : {});
+    } catch (e) {
+      setNudgedMembers({});
+    }
+  }, [dateKey]);
 
   // Interactive Theme Mode: "dark" (Vibrant Dark) | "light" (Fresh Light)
   const [theme, setTheme] = useState(() => {
@@ -697,9 +716,52 @@ export default function StandupApp({ t }) {
     return source;
   }, [cardPickerTab, assignedCardsForTeammate, boardData.cards, cardPickerSearch]);
 
-  // Send Nudge notification
-  function handleSendNudge(memberName) {
-    showToast(`🔔 Reminder nudge sent to ${memberName}!`);
+  // Send Nudge notification via Trello @mention & toast
+  async function handleSendNudge(member) {
+    if (!member) return;
+
+    if (nudgedMembers[member.id]) {
+      showToast(`ℹ️ Reminder was already sent to ${member.name} today.`);
+      return;
+    }
+
+    const senderName =
+      currentUser?.fullName ||
+      boardData.currentMember?.fullName ||
+      formTeammate ||
+      "A teammate";
+
+    // Find best card to post the @mention comment on (assigned card first, then board card)
+    const targetCard = member.assignedCards?.[0] || boardData.cards?.[0];
+    const targetCardId = targetCard?.id || targetCard?.cardId;
+    const username = member.username || member.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    if (t && targetCardId) {
+      try {
+        await sendTrelloCardNudge(t, targetCardId, username, senderName);
+        showToast(`🔔 Notification sent to @${username} on Trello!`);
+      } catch (err) {
+        console.warn("Could not post Trello @mention comment via API:", err);
+        if (err?.message === "NOT_AUTHORIZED") {
+          showToast(`🔔 Reminder sent to ${member.name}! (Authorize Power-Up for native Trello @mentions)`);
+        } else {
+          showToast(`🔔 Reminder nudge sent to ${member.name}!`);
+        }
+      }
+    } else {
+      showToast(`🔔 Reminder nudge sent to ${member.name}!`);
+    }
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const updatedNudges = {
+      ...nudgedMembers,
+      [member.id]: { timestamp: Date.now(), timeStr },
+    };
+
+    setNudgedMembers(updatedNudges);
+    try {
+      sessionStorage.setItem(`ds_nudged_${dateKey}`, JSON.stringify(updatedNudges));
+    } catch (e) {}
   }
 
   function showToast(msg) {
@@ -1492,14 +1554,35 @@ export default function StandupApp({ t }) {
                       )}
 
                       <div className="unsubmitted-actions-row">
-                        <button
-                          type="button"
-                          className="btn-send-nudge"
-                          onClick={() => handleSendNudge(member.name)}
-                        >
-                          <BellIcon width={12} height={12} />
-                          <span>Send Reminder</span>
-                        </button>
+                        {(() => {
+                          const isNudged = Boolean(nudgedMembers[member.id]);
+                          const nudgeInfo = nudgedMembers[member.id];
+                          return (
+                            <button
+                              type="button"
+                              className={`btn-send-nudge ${isNudged ? "is-reminded" : ""}`}
+                              disabled={isNudged}
+                              onClick={() => handleSendNudge(member)}
+                              title={
+                                isNudged
+                                  ? `Reminder sent at ${nudgeInfo?.timeStr || "earlier today"}`
+                                  : `Send Trello @mention reminder to ${member.name}`
+                              }
+                            >
+                              {isNudged ? (
+                                <>
+                                  <CheckIcon width={12} height={12} />
+                                  <span>Reminded ✓</span>
+                                </>
+                              ) : (
+                                <>
+                                  <BellIcon width={12} height={12} />
+                                  <span>Send Reminder</span>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   ) : (
