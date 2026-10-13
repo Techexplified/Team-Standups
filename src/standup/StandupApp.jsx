@@ -429,6 +429,8 @@ export default function StandupApp({ t }) {
                 ...existing,
                 id: bm.id,
                 name: bm.name,
+                username: bm.username || existing.username || "",
+                role: bm.username ? `@${bm.username}` : (existing.role || "Board Contributor"),
                 avatar: bm.avatar || existing.avatar,
                 avatarBg: bm.avatarBg || existing.avatarBg,
                 assignedCards: bm.assignedCards || [],
@@ -450,7 +452,8 @@ export default function StandupApp({ t }) {
             return {
               id: bm.id,
               name: bm.name,
-              role: bm.role || "Board Contributor",
+              username: bm.username || "",
+              role: bm.role || (bm.username ? `@${bm.username}` : "Board Contributor"),
               avatar: bm.avatar,
               avatarBg: bm.avatarBg,
               timestamp: "Pending",
@@ -519,6 +522,8 @@ export default function StandupApp({ t }) {
                 ...existing,
                 id: bm.id,
                 name: bm.name,
+                username: bm.username || existing.username || "",
+                role: bm.username ? `@${bm.username}` : (existing.role || "Board Contributor"),
                 avatar: bm.avatar || existing.avatar,
                 avatarBg: bm.avatarBg || existing.avatarBg,
                 assignedCards: bm.assignedCards || [],
@@ -542,7 +547,8 @@ export default function StandupApp({ t }) {
             return {
               id: bm.id,
               name: bm.name,
-              role: bm.role || "Board Contributor",
+              username: bm.username || "",
+              role: bm.role || (bm.username ? `@${bm.username}` : "Board Contributor"),
               avatar: bm.avatar,
               avatarBg: bm.avatarBg,
               timestamp: "Pending",
@@ -739,17 +745,25 @@ export default function StandupApp({ t }) {
     if (t && targetCardId) {
       try {
         await sendTrelloCardNudge(t, targetCardId, username, senderName);
-        showToast(`🔔 Notification sent to @${username} on Trello!`);
+        showToast(`🔔 Reminder posted on card "${targetCard.name || targetCard.title}" mentioning @${username}!`);
       } catch (err) {
         console.warn("Could not post Trello @mention comment via API:", err);
         if (err?.message === "NOT_AUTHORIZED") {
-          showToast(`🔔 Reminder sent to ${member.name}! (Authorize Power-Up for native Trello @mentions)`);
+          if (t && typeof t.popup === "function") {
+            t.popup({
+              title: "Authorize Daily Standups",
+              url: "./auth.html",
+              height: 340,
+            });
+          }
+          showToast(`⚠️ Please authorize Power-Up to post native Trello @mentions`);
+          return;
         } else {
-          showToast(`🔔 Reminder nudge sent to ${member.name}!`);
+          showToast(`🔔 Reminder sent to ${member.name}!`);
         }
       }
     } else {
-      showToast(`🔔 Reminder nudge sent to ${member.name}!`);
+      showToast(`🔔 Reminder sent to ${member.name}!`);
     }
 
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

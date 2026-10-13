@@ -131,6 +131,9 @@ export async function sendTrelloCardNudge(t, cardId, username, senderName = "A t
 
   return apiFetch(t, `/cards/${cardId}/actions/comments`, {
     method: "POST",
+    params: {
+      text: commentText,
+    },
     body: { text: commentText },
   });
 }
