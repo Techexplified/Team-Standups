@@ -5,6 +5,8 @@ import {
   fetchActualBoardData,
   loadBoardStandups,
   saveBoardStandups,
+  getAvatarGradient,
+  getInitials,
 } from "../lib/boardService.js";
 import {
   StandupLogoIcon,
@@ -22,6 +24,8 @@ import {
   RefreshCwIcon,
   LayersIcon,
   EditIcon,
+  MessageSquareIcon,
+  SendIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
@@ -46,6 +50,7 @@ const INITIAL_TEAM_MEMBERS = [
     hasBlocker: false,
     blockerText: "",
     assignedCards: [],
+    comments: [],
   },
   {
     id: "m1",
@@ -67,6 +72,17 @@ const INITIAL_TEAM_MEMBERS = [
     hasBlocker: false,
     blockerText: "",
     assignedCards: [],
+    comments: [
+      {
+        id: "c1",
+        authorName: "Sofia Morales",
+        authorAvatar: "SM",
+        authorAvatarBg: "linear-gradient(135deg, #eab308, #f97316)",
+        text: "Great progress on database indexing! Let me know if you need review on PR #104.",
+        timestamp: "Today, 10:15 AM",
+        createdAt: 1728814500000,
+      },
+    ],
   },
   {
     id: "m2",
@@ -87,6 +103,17 @@ const INITIAL_TEAM_MEMBERS = [
     hasBlocker: true,
     blockerText: "Waiting on staging database credentials from DevOps team (ticket #DEVOPS-992).",
     assignedCards: [],
+    comments: [
+      {
+        id: "c2",
+        authorName: "Alex Rivera",
+        authorAvatar: "AR",
+        authorAvatarBg: "linear-gradient(135deg, #2563eb, #38bdf8)",
+        text: "Pinging the DevOps lead right now to expedite staging credentials.",
+        timestamp: "Today, 10:45 AM",
+        createdAt: 1728816300000,
+      },
+    ],
   },
   {
     id: "m3",
@@ -252,11 +279,26 @@ export default function StandupApp({ t }) {
   const [teamMembers, setTeamMembers] = useState(() => {
     try {
       const saved = localStorage.getItem("ds_team_standups_v2");
-      return saved ? JSON.parse(saved) : INITIAL_TEAM_MEMBERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((m) => {
+            if (!m.comments) {
+              const init = INITIAL_TEAM_MEMBERS.find((im) => im.id === m.id || im.name === m.name);
+              return { ...m, comments: init?.comments || [] };
+            }
+            return m;
+          });
+        }
+      }
+      return INITIAL_TEAM_MEMBERS;
     } catch (e) {
       return INITIAL_TEAM_MEMBERS;
     }
   });
+
+  // Active comment input text per member card: { [memberId]: "draft text" }
+  const [commentInputs, setCommentInputs] = useState({});
 
   // Current User profile & Auth
   const [currentUser, setCurrentUser] = useState(null);
@@ -340,6 +382,7 @@ export default function StandupApp({ t }) {
                 avatar: bm.avatar || existing.avatar,
                 avatarBg: bm.avatarBg || existing.avatarBg,
                 assignedCards: bm.assignedCards || [],
+                comments: existing.comments || [],
               };
             }
 
@@ -367,6 +410,7 @@ export default function StandupApp({ t }) {
               hasBlocker: false,
               blockerText: "",
               assignedCards: bm.assignedCards || [],
+              comments: [],
             };
           });
 
@@ -428,6 +472,7 @@ export default function StandupApp({ t }) {
                 avatar: bm.avatar || existing.avatar,
                 avatarBg: bm.avatarBg || existing.avatarBg,
                 assignedCards: bm.assignedCards || [],
+                comments: existing.comments || [],
               };
             }
 
@@ -457,6 +502,7 @@ export default function StandupApp({ t }) {
               hasBlocker: false,
               blockerText: "",
               assignedCards: bm.assignedCards || [],
+              comments: [],
             };
           });
 
@@ -497,6 +543,7 @@ export default function StandupApp({ t }) {
               id: bm.id,
               name: bm.name,
               assignedCards: bm.assignedCards || [],
+              comments: existing.comments || [],
             };
           }
 
@@ -513,6 +560,7 @@ export default function StandupApp({ t }) {
             hasBlocker: false,
             blockerText: "",
             assignedCards: bm.assignedCards || [],
+            comments: [],
           };
         });
 
@@ -765,6 +813,48 @@ export default function StandupApp({ t }) {
     } else {
       showToast(`↺ Moved "${taskName.slice(0, 24)}..." back to In Progress`);
     }
+  }
+
+  // Add comment to a member's standup card
+  async function handleAddComment(memberId) {
+    const text = (commentInputs[memberId] || "").trim();
+    if (!text) return;
+
+    const authorName =
+      currentUser?.fullName ||
+      boardData.currentMember?.fullName ||
+      (currentUser?.username ? `@${currentUser.username}` : null) ||
+      formTeammate ||
+      "Alex Rivera";
+
+    const authorInitials = getInitials(authorName);
+    const authorBg = getAvatarGradient(authorName);
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    const newComment = {
+      id: "cmt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      authorName,
+      authorAvatar: authorInitials,
+      authorAvatarBg: authorBg,
+      text,
+      timestamp: `Today, ${timeStr}`,
+      createdAt: Date.now(),
+    };
+
+    const updated = teamMembers.map((m) => {
+      if (m.id === memberId) {
+        return {
+          ...m,
+          comments: [...(m.comments || []), newComment],
+        };
+      }
+      return m;
+    });
+
+    setTeamMembers(updated);
+    setCommentInputs((prev) => ({ ...prev, [memberId]: "" }));
+    await saveBoardStandups(t, updated, {}, dateKey);
+    showToast("💬 Comment posted!");
   }
 
   // Open Edit Modal pre-populated with member's current standup
@@ -1391,6 +1481,71 @@ export default function StandupApp({ t }) {
                       )}
                     </>
                   )}
+
+                  {/* COMMENTS SECTION */}
+                  <div className="card-comments-section">
+                    <div className="comments-header-row">
+                      <span className="comments-title-btn">
+                        <MessageSquareIcon width={13} height={13} />
+                        <span>Comments</span>
+                        {(member.comments?.length || 0) > 0 && (
+                          <span className="comments-count-pill">{member.comments.length}</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Display comments list */}
+                    {Array.isArray(member.comments) && member.comments.length > 0 && (
+                      <div className="comments-list">
+                        {member.comments.map((comment) => (
+                          <div key={comment.id} className="comment-item-box">
+                            <div
+                              className="comment-avatar"
+                              style={{ background: comment.authorAvatarBg || "var(--ds-primary)" }}
+                            >
+                              {comment.authorAvatar || "TM"}
+                            </div>
+                            <div className="comment-content">
+                              <div className="comment-meta-line">
+                                <span className="comment-author-name">{comment.authorName}</span>
+                                <span className="comment-timestamp">{comment.timestamp}</span>
+                              </div>
+                              <p className="comment-text">{comment.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Comment input field & add comment interaction */}
+                    <div className="comment-input-row">
+                      <input
+                        type="text"
+                        className="comment-input-field"
+                        placeholder="Write a comment or question..."
+                        value={commentInputs[member.id] || ""}
+                        onChange={(e) =>
+                          setCommentInputs((prev) => ({ ...prev, [member.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddComment(member.id);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-post-comment"
+                        disabled={!(commentInputs[member.id] || "").trim()}
+                        onClick={() => handleAddComment(member.id)}
+                        title="Post comment"
+                      >
+                        <SendIcon width={12} height={12} />
+                        <span>Post</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })
