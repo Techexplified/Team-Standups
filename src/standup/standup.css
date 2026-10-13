@@ -1029,13 +1029,35 @@ html, body {
   background: rgba(16, 185, 129, 0.12);
   border-color: rgba(16, 185, 129, 0.35);
   color: #34d399;
-  cursor: default;
-  transform: none !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.btn-send-nudge:disabled {
-  opacity: 0.9;
-  cursor: default;
+.btn-send-nudge.is-reminded:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.btn-nudge-reminded-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-nudge-resend-label {
+  display: none;
+}
+
+.btn-send-nudge.is-reminded:hover .btn-nudge-reminded-label {
+  display: none;
+}
+
+.btn-send-nudge.is-reminded:hover .btn-nudge-resend-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ==========================================================================
@@ -2399,6 +2421,12 @@ html, body {
   background: #ecfdf5;
   border-color: #a7f3d0;
   color: #059669;
+}
+
+.standup-app-container.theme-light .btn-send-nudge.is-reminded:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
 }
 
 .standup-app-container.theme-light .card-comments-section {

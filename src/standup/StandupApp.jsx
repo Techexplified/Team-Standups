@@ -726,11 +726,6 @@ export default function StandupApp({ t }) {
   async function handleSendNudge(member) {
     if (!member) return;
 
-    if (nudgedMembers[member.id]) {
-      showToast(`ℹ️ Reminder was already sent to ${member.name} today.`);
-      return;
-    }
-
     const senderName =
       currentUser?.fullName ||
       boardData.currentMember?.fullName ||
@@ -1575,18 +1570,23 @@ export default function StandupApp({ t }) {
                             <button
                               type="button"
                               className={`btn-send-nudge ${isNudged ? "is-reminded" : ""}`}
-                              disabled={isNudged}
                               onClick={() => handleSendNudge(member)}
                               title={
                                 isNudged
-                                  ? `Reminder sent at ${nudgeInfo?.timeStr || "earlier today"}`
+                                  ? `Reminder sent at ${nudgeInfo?.timeStr || "earlier today"}. Click to resend.`
                                   : `Send Trello @mention reminder to ${member.name}`
                               }
                             >
                               {isNudged ? (
                                 <>
-                                  <CheckIcon width={12} height={12} />
-                                  <span>Reminded ✓</span>
+                                  <span className="btn-nudge-reminded-label">
+                                    <CheckIcon width={12} height={12} />
+                                    <span>Reminded ✓</span>
+                                  </span>
+                                  <span className="btn-nudge-resend-label">
+                                    <RefreshCwIcon width={12} height={12} />
+                                    <span>Resend Reminder</span>
+                                  </span>
                                 </>
                               ) : (
                                 <>
