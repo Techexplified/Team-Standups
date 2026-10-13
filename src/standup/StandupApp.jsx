@@ -479,7 +479,7 @@ export default function StandupApp({ t }) {
           setTeamMembers(storedStandups);
         }
       } catch (err) {
-        console.warn("Error loading board data:", err);
+        // Handled silently with existing fallback data
       } finally {
         if (mounted) setIsLoadingBoard(false);
       }
@@ -567,7 +567,7 @@ export default function StandupApp({ t }) {
           setTeamMembers(storedStandups);
         }
       } catch (e) {
-        console.warn("Failed to load standups for date", dateKey, e);
+        // Handled silently with existing fallback data
       }
     }
 
@@ -742,7 +742,6 @@ export default function StandupApp({ t }) {
         await sendTrelloCardNudge(t, targetCardId, username, senderName);
         showToast(`🔔 Reminder posted on card "${targetCard.name || targetCard.title}" mentioning @${username}!`);
       } catch (err) {
-        console.warn("Could not post Trello @mention comment via API:", err);
         if (err?.message === "NOT_AUTHORIZED") {
           if (t && typeof t.popup === "function") {
             t.popup({
@@ -1587,7 +1586,7 @@ export default function StandupApp({ t }) {
                                 <>
                                   <span className="btn-nudge-reminded-label">
                                     <CheckIcon width={12} height={12} />
-                                    <span>Reminded ✓</span>
+                                    <span>Reminded</span>
                                   </span>
                                   <span className="btn-nudge-resend-label">
                                     <RefreshCwIcon width={12} height={12} />

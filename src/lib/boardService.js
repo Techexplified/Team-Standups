@@ -107,7 +107,7 @@ export async function fetchActualBoardData(t) {
         }
       }
     } catch (e) {
-      console.warn("Could not retrieve board via t.board", e);
+      // t.board retrieval handled gracefully with fallback
     }
   }
 
@@ -120,7 +120,7 @@ export async function fetchActualBoardData(t) {
         isLiveBoard = true;
       }
     } catch (e) {
-      console.warn("Could not retrieve lists via t.lists", e);
+      // t.lists retrieval handled gracefully with fallback
     }
   }
 
@@ -133,7 +133,7 @@ export async function fetchActualBoardData(t) {
         isLiveBoard = true;
       }
     } catch (e) {
-      console.warn("Could not retrieve cards via t.cards", e);
+      // t.cards retrieval handled gracefully with fallback
     }
   }
 
@@ -179,7 +179,7 @@ export async function fetchActualBoardData(t) {
       }
     }
   } catch (e) {
-    console.warn("REST API fallback encounter error", e);
+    // REST API fallback handled gracefully
   }
 
   // Build list lookup map
@@ -272,7 +272,7 @@ export async function loadBoardStandups(t, dateKey = null) {
         }
       }
     } catch (e) {
-      console.warn("Failed to load standups from Trello board storage", e);
+      // Trello storage retrieval handled gracefully with localStorage fallback
     }
   }
 
@@ -327,7 +327,7 @@ export async function saveBoardStandups(t, standupData, opts = {}, dateKey = nul
       await t.set("board", "shared", "daily_standups_v2", JSON.stringify(enrichedData)).catch(() => {});
       await t.set("board", "shared", "dailyStandupsLastUpdate", Date.now()).catch(() => {});
     } catch (e) {
-      console.warn("Failed to persist standups to Trello board storage", e);
+      // Trello storage persistence handled gracefully with localStorage fallback
     }
 
     // 3. Update card-level badges for linked cards if provided

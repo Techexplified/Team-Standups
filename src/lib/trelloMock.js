@@ -241,7 +241,7 @@ export function getTrelloClient() {
         return realClient;
       }
     } catch (e) {
-      console.warn("TrelloPowerUp.iframe() failed, using mock client", e);
+      // TrelloPowerUp.iframe() fallback handled cleanly
     }
   }
 
@@ -269,17 +269,13 @@ export function getTrelloClient() {
       return Promise.resolve();
     },
     sizeTo: (selector) => Promise.resolve(),
-    closePopup: () => {
-      console.log("[Mock Trello] closePopup called");
-    },
+    closePopup: () => {},
     popup: (opts) => {
-      console.log("[Mock Trello] popup requested:", opts);
       if (opts && opts.url) {
         window.open(opts.url, "_blank");
       }
     },
     modal: (opts) => {
-      console.log("[Mock Trello] modal requested:", opts);
       if (opts && opts.url) {
         window.open(opts.url, "_blank");
       }
