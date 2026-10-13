@@ -28,6 +28,8 @@ import {
   SendIcon,
   SunIcon,
   MoonIcon,
+  ChevronDownIcon,
+  TrashIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
@@ -301,6 +303,16 @@ export default function StandupApp({ t }) {
 
   // Active comment input text per member card: { [memberId]: "draft text" }
   const [commentInputs, setCommentInputs] = useState({});
+
+  // Collapsible comments state: tracks which member cards have comments expanded
+  const [expandedComments, setExpandedComments] = useState({});
+
+  function toggleComments(memberId) {
+    setExpandedComments((prev) => ({
+      ...prev,
+      [memberId]: !prev[memberId],
+    }));
+  }
 
   // Interactive Theme Mode: "dark" (Vibrant Dark) | "light" (Fresh Light)
   const [theme, setTheme] = useState(() => {
@@ -879,8 +891,26 @@ export default function StandupApp({ t }) {
 
     setTeamMembers(updated);
     setCommentInputs((prev) => ({ ...prev, [memberId]: "" }));
+    setExpandedComments((prev) => ({ ...prev, [memberId]: true }));
     await saveBoardStandups(t, updated, {}, dateKey);
     showToast("💬 Comment posted!");
+  }
+
+  // Delete a comment from a member's standup card
+  async function handleDeleteComment(memberId, commentId) {
+    const updated = teamMembers.map((m) => {
+      if (m.id === memberId) {
+        return {
+          ...m,
+          comments: (m.comments || []).filter((c) => c.id !== commentId),
+        };
+      }
+      return m;
+    });
+
+    setTeamMembers(updated);
+    await saveBoardStandups(t, updated, {}, dateKey);
+    showToast("🗑️ Comment removed");
   }
 
   // Open Edit Modal pre-populated with member's current standup
@@ -1566,69 +1596,154 @@ export default function StandupApp({ t }) {
                     </>
                   )}
 
-                  {/* COMMENTS SECTION */}
+                  {/* COMMENTS SECTION (Collapsible by default to eliminate card clutter) */}
                   <div className="card-comments-section">
-                    <div className="comments-header-row">
-                      <span className="comments-title-btn">
-                        <MessageSquareIcon width={13} height={13} />
-                        <span>Comments</span>
-                        {(member.comments?.length || 0) > 0 && (
-                          <span className="comments-count-pill">{member.comments.length}</span>
-                        )}
-                      </span>
-                    </div>
+                    {!expandedComments[member.id] ? (
+                      /* Collapsed Compact Trigger */
+                      <div className="comments-collapsed-bar">
+                        <button
+                          type="button"
+                          className={`comments-toggle-btn ${
+                            (member.comments?.length || 0) > 0 ? "has-comments" : "is-empty"
+                          }`}
+                          onClick={() => toggleComments(member.id)}
+                          title={
+                            (member.comments?.length || 0) > 0
+                              ? `View ${member.comments.length} comment${
+                                  member.comments.length > 1 ? "s" : ""
+                                }`
+                              : "Add a comment"
+                          }
+                        >
+                          <MessageSquareIcon width={13} height={13} />
+                          <span>
+                            {(member.comments?.length || 0) > 0
+                              ? `${member.comments.length} Comment${
+                                  member.comments.length > 1 ? "s" : ""
+                                }`
+                              : "Add comment"}
+                          </span>
+                          {(member.comments?.length || 0) > 0 ? (
+                            <ChevronDownIcon width={12} height={12} className="toggle-chevron" />
+                          ) : (
+                            <span className="comments-plus-sign">+</span>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      /* Expanded Comments View */
+                      <div className="comments-expanded-view">
+                        <div className="comments-header-row expanded">
+                          <button
+                            type="button"
+                            className="comments-title-btn"
+                            onClick={() => toggleComments(member.id)}
+                            title="Collapse comments"
+                          >
+                            <MessageSquareIcon width={13} height={13} />
+                            <span>Comments</span>
+                            {(member.comments?.length || 0) > 0 && (
+                              <span className="comments-count-pill">
+                                {member.comments.length}
+                              </span>
+                            )}
+                            <ChevronDownIcon
+                              width={12}
+                              height={12}
+                              className="toggle-chevron is-open"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            className="comments-collapse-btn"
+                            onClick={() => toggleComments(member.id)}
+                            title="Collapse comments"
+                          >
+                            Hide
+                          </button>
+                        </div>
 
-                    {/* Display comments list */}
-                    {Array.isArray(member.comments) && member.comments.length > 0 && (
-                      <div className="comments-list">
-                        {member.comments.map((comment) => (
-                          <div key={comment.id} className="comment-item-box">
-                            <div
-                              className="comment-avatar"
-                              style={{ background: comment.authorAvatarBg || "var(--ds-primary)" }}
-                            >
-                              {comment.authorAvatar || "TM"}
-                            </div>
-                            <div className="comment-content">
-                              <div className="comment-meta-line">
-                                <span className="comment-author-name">{comment.authorName}</span>
-                                <span className="comment-timestamp">{comment.timestamp}</span>
+                        {/* Display comments list */}
+                        {Array.isArray(member.comments) && member.comments.length > 0 ? (
+                          <div className="comments-list">
+                            {member.comments.map((comment) => (
+                              <div key={comment.id} className="comment-item-box">
+                                <div
+                                  className="comment-avatar"
+                                  style={{
+                                    background: comment.authorAvatarBg || "var(--ds-primary)",
+                                  }}
+                                >
+                                  {comment.authorAvatar || "TM"}
+                                </div>
+                                <div className="comment-content">
+                                  <div className="comment-meta-line">
+                                    <span className="comment-author-name">
+                                      {comment.authorName}
+                                    </span>
+                                    <div className="comment-meta-actions">
+                                      <span className="comment-timestamp">
+                                        {comment.timestamp}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="btn-delete-comment"
+                                        onClick={() =>
+                                          handleDeleteComment(member.id, comment.id)
+                                        }
+                                        title="Delete comment"
+                                        aria-label="Delete comment"
+                                      >
+                                        <TrashIcon width={11} height={11} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <p className="comment-text">{comment.text}</p>
+                                </div>
                               </div>
-                              <p className="comment-text">{comment.text}</p>
-                            </div>
+                            ))}
                           </div>
-                        ))}
+                        ) : (
+                          <p className="comments-empty-hint">
+                            No comments yet. Leave a question or note for{" "}
+                            {member.name.split(" ")[0]}!
+                          </p>
+                        )}
+
+                        {/* Comment input field & add comment interaction */}
+                        <div className="comment-input-row">
+                          <input
+                            type="text"
+                            className="comment-input-field"
+                            placeholder="Write a comment or question..."
+                            value={commentInputs[member.id] || ""}
+                            autoFocus
+                            onChange={(e) =>
+                              setCommentInputs((prev) => ({
+                                ...prev,
+                                [member.id]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment(member.id);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="btn-post-comment"
+                            disabled={!(commentInputs[member.id] || "").trim()}
+                            onClick={() => handleAddComment(member.id)}
+                            title="Post comment"
+                          >
+                            <SendIcon width={12} height={12} />
+                            <span>Post</span>
+                          </button>
+                        </div>
                       </div>
                     )}
-
-                    {/* Comment input field & add comment interaction */}
-                    <div className="comment-input-row">
-                      <input
-                        type="text"
-                        className="comment-input-field"
-                        placeholder="Write a comment or question..."
-                        value={commentInputs[member.id] || ""}
-                        onChange={(e) =>
-                          setCommentInputs((prev) => ({ ...prev, [member.id]: e.target.value }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment(member.id);
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="btn-post-comment"
-                        disabled={!(commentInputs[member.id] || "").trim()}
-                        onClick={() => handleAddComment(member.id)}
-                        title="Post comment"
-                      >
-                        <SendIcon width={12} height={12} />
-                        <span>Post</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               );
