@@ -2,6 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { isAuthorized } from "../lib/auth.js";
 import { getCurrentMember } from "../lib/trelloApi.js";
 import {
+  fetchActualBoardData,
+  loadBoardStandups,
+  saveBoardStandups,
+} from "../lib/boardService.js";
+import {
   StandupLogoIcon,
   CheckIcon,
   CheckCircleIcon,
@@ -13,13 +18,13 @@ import {
   BellIcon,
   AlertTriangleIcon,
   TrelloCardIcon,
-  FlameIcon,
   ClockIcon,
-  TrashIcon,
+  RefreshCwIcon,
+  LayersIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
-// Initial mock sprint team data representing Version 2 state
+// Initial mock sprint team data representing baseline fallback
 const INITIAL_TEAM_MEMBERS = [
   {
     id: "m0",
@@ -39,6 +44,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m1",
@@ -59,6 +65,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m2",
@@ -78,6 +85,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: true,
     blockerText: "Waiting on staging database credentials from DevOps team (ticket #DEVOPS-992).",
+    assignedCards: [],
   },
   {
     id: "m3",
@@ -91,6 +99,7 @@ const INITIAL_TEAM_MEMBERS = [
     todayTasks: [],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m4",
@@ -110,6 +119,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m5",
@@ -129,6 +139,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m6",
@@ -148,6 +159,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
   {
     id: "m7",
@@ -166,6 +178,7 @@ const INITIAL_TEAM_MEMBERS = [
     ],
     hasBlocker: true,
     blockerText: "Requires TLS certificate renewal on custom subdomain proxy.",
+    assignedCards: [],
   },
   {
     id: "m8",
@@ -179,10 +192,25 @@ const INITIAL_TEAM_MEMBERS = [
     todayTasks: [],
     hasBlocker: false,
     blockerText: "",
+    assignedCards: [],
   },
 ];
 
 export default function StandupApp({ t }) {
+  // Live Board State from Trello
+  const [boardData, setBoardData] = useState({
+    board: { id: "default_board", name: "Engineering Sprint Board" },
+    members: [],
+    lists: [],
+    cards: [],
+    currentMember: null,
+    isLiveBoard: false,
+    lastSyncTime: null,
+  });
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Team standups state (merged with board data)
   const [teamMembers, setTeamMembers] = useState(() => {
     try {
       const saved = localStorage.getItem("ds_team_standups_v2");
@@ -192,7 +220,7 @@ export default function StandupApp({ t }) {
     }
   });
 
-  // Current User profile
+  // Current User profile & Auth
   const [currentUser, setCurrentUser] = useState(null);
   const [authorized, setAuthorized] = useState(false);
 
@@ -205,7 +233,7 @@ export default function StandupApp({ t }) {
   const [selectedTeammate, setSelectedTeammate] = useState("all");
   const [activeTab, setActiveTab] = useState("all"); // "all" | "submitted" | "unsubmitted" | "blockers"
 
-  // Modal State for Log Daily Standup (Exact specification)
+  // Modal State for Log Daily Standup
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [formTeammate, setFormTeammate] = useState("Alex Rivera");
   const [formDate, setFormDate] = useState("2026-10-10");
@@ -213,8 +241,12 @@ export default function StandupApp({ t }) {
   const [formDoingToday, setFormDoingToday] = useState("");
   const [formBlockers, setFormBlockers] = useState("");
   const [formLinkedCards, setFormLinkedCards] = useState([]);
+
+  // Board Card Picker State inside Modal
   const [showCardPicker, setShowCardPicker] = useState(false);
-  const [newCardTag, setNewCardTag] = useState("[TASK-105]");
+  const [cardPickerTab, setCardPickerTab] = useState("assigned"); // "assigned" | "all" | "custom"
+  const [cardPickerSearch, setCardPickerSearch] = useState("");
+  const [newCardTag, setNewCardTag] = useState("[CARD]");
   const [newCardTitle, setNewCardTitle] = useState("");
   const [newCardStatus, setNewCardStatus] = useState("In Progress");
 
@@ -223,32 +255,168 @@ export default function StandupApp({ t }) {
 
   // View mode check (e.g., card-back-section)
   const [isCardBackView, setIsCardBackView] = useState(false);
+  const [cardBackCardId, setCardBackCardId] = useState(null);
 
+  // Initialize and synchronize Board Data from Trello
   useEffect(() => {
+    let mounted = true;
     const params = new URLSearchParams(window.location.search);
     if (params.get("view") === "card-back-section") {
       setIsCardBackView(true);
     }
+    const cardIdParam = params.get("cardId");
+    if (cardIdParam) {
+      setCardBackCardId(cardIdParam);
+    }
 
-    async function loadAuth() {
+    async function loadData() {
+      setIsLoadingBoard(true);
       try {
-        const authed = await isAuthorized(t);
-        setAuthorized(authed);
+        // 1. Check authorization & get member profile
+        const authed = await isAuthorized(t).catch(() => false);
+        if (mounted) setAuthorized(authed);
         if (authed) {
           const profile = await getCurrentMember(t).catch(() => null);
-          if (profile) setCurrentUser(profile);
+          if (mounted && profile) setCurrentUser(profile);
         }
-      } catch (e) {}
+
+        // 2. Fetch live board information (board, cards, lists, members)
+        const liveBoard = await fetchActualBoardData(t);
+        if (!mounted) return;
+        setBoardData(liveBoard);
+
+        // 3. Load standups from board shared storage or localStorage
+        const storedStandups = await loadBoardStandups(t);
+
+        // 4. Merge board members with standup records
+        if (Array.isArray(liveBoard.members) && liveBoard.members.length > 0) {
+          const merged = liveBoard.members.map((bm) => {
+            const existing = (storedStandups || teamMembers).find(
+              (s) =>
+                s.id === bm.id ||
+                s.name.toLowerCase() === bm.name.toLowerCase() ||
+                (bm.username && s.name.toLowerCase() === bm.username.toLowerCase())
+            );
+
+            if (existing) {
+              return {
+                ...existing,
+                id: bm.id,
+                name: bm.name,
+                avatar: bm.avatar || existing.avatar,
+                avatarBg: bm.avatarBg || existing.avatarBg,
+                assignedCards: bm.assignedCards || [],
+              };
+            }
+
+            // Fresh member from board without standup submitted yet
+            const defaultDoing = (bm.assignedCards || [])
+              .filter((c) => c.status === "In Progress")
+              .map((c) => ({
+                id: c.id,
+                tag: c.tag || `[${c.listName}]`,
+                text: c.name,
+                status: "In Progress",
+                fromBoard: true,
+              }));
+
+            return {
+              id: bm.id,
+              name: bm.name,
+              role: bm.role || "Board Contributor",
+              avatar: bm.avatar,
+              avatarBg: bm.avatarBg,
+              timestamp: "Pending",
+              status: "unsubmitted",
+              yesterdayItems: [],
+              todayTasks: defaultDoing,
+              hasBlocker: false,
+              blockerText: "",
+              assignedCards: bm.assignedCards || [],
+            };
+          });
+
+          setTeamMembers(merged);
+          // Set default form teammate to logged in member if matched
+          if (liveBoard.currentMember && liveBoard.currentMember.fullName) {
+            const match = merged.find((m) => m.name === liveBoard.currentMember.fullName);
+            if (match) setFormTeammate(match.name);
+          } else if (merged[0]) {
+            setFormTeammate(merged[0].name);
+          }
+        } else if (storedStandups && storedStandups.length > 0) {
+          setTeamMembers(storedStandups);
+        }
+      } catch (err) {
+        console.warn("Error loading board data:", err);
+      } finally {
+        if (mounted) setIsLoadingBoard(false);
+      }
     }
-    loadAuth();
+
+    loadData();
+
+    return () => {
+      mounted = false;
+    };
   }, [t]);
 
-  // Save changes to localStorage
+  // Save changes to localStorage whenever teamMembers changes
   useEffect(() => {
     try {
       localStorage.setItem("ds_team_standups_v2", JSON.stringify(teamMembers));
     } catch (e) {}
   }, [teamMembers]);
+
+  // Refresh Board Data handler
+  async function handleRefreshBoard() {
+    setIsSyncing(true);
+    try {
+      const liveBoard = await fetchActualBoardData(t);
+      setBoardData(liveBoard);
+      const storedStandups = await loadBoardStandups(t);
+
+      if (Array.isArray(liveBoard.members) && liveBoard.members.length > 0) {
+        const merged = liveBoard.members.map((bm) => {
+          const existing = (storedStandups || teamMembers).find(
+            (s) => s.id === bm.id || s.name.toLowerCase() === bm.name.toLowerCase()
+          );
+
+          if (existing) {
+            return {
+              ...existing,
+              id: bm.id,
+              name: bm.name,
+              assignedCards: bm.assignedCards || [],
+            };
+          }
+
+          return {
+            id: bm.id,
+            name: bm.name,
+            role: bm.role || "Board Contributor",
+            avatar: bm.avatar,
+            avatarBg: bm.avatarBg,
+            timestamp: "Pending",
+            status: "unsubmitted",
+            yesterdayItems: [],
+            todayTasks: [],
+            hasBlocker: false,
+            blockerText: "",
+            assignedCards: bm.assignedCards || [],
+          };
+        });
+
+        setTeamMembers(merged);
+      }
+
+      showToast(`🔄 Synced with ${liveBoard.board.name} (${liveBoard.cards.length} cards, ${liveBoard.members.length} members)`);
+    } catch (e) {
+      showToast("⚠️ Failed to re-sync board data");
+    } finally {
+      setIsSyncing(false);
+    }
+  }
 
   // Compute KPI metrics dynamically
   const metrics = useMemo(() => {
@@ -313,6 +481,27 @@ export default function StandupApp({ t }) {
     });
   }, [teamMembers, activeTab, selectedTeammate, searchQuery]);
 
+  // Currently selected member object in modal
+  const activeFormMember = useMemo(() => {
+    return teamMembers.find((m) => m.name === formTeammate) || teamMembers[0] || null;
+  }, [teamMembers, formTeammate]);
+
+  // Board cards assigned to the selected teammate in modal
+  const assignedCardsForTeammate = useMemo(() => {
+    if (!activeFormMember) return [];
+    return boardData.cards.filter((c) => c.idMembers.includes(activeFormMember.id));
+  }, [boardData.cards, activeFormMember]);
+
+  // Filtered cards for the board card picker
+  const filteredPickerCards = useMemo(() => {
+    let source = cardPickerTab === "assigned" ? assignedCardsForTeammate : boardData.cards;
+    if (cardPickerSearch.trim()) {
+      const q = cardPickerSearch.toLowerCase();
+      source = source.filter((c) => c.name.toLowerCase().includes(q) || c.listName.toLowerCase().includes(q));
+    }
+    return source;
+  }, [cardPickerTab, assignedCardsForTeammate, boardData.cards, cardPickerSearch]);
+
   // Send Nudge notification
   function handleSendNudge(memberName) {
     showToast(`🔔 Reminder nudge sent to ${memberName}!`);
@@ -342,20 +531,66 @@ export default function StandupApp({ t }) {
 
   function closeLogModal() {
     setIsLogModalOpen(false);
+    setShowCardPicker(false);
   }
 
-  // Linked Card Handlers for Modal
-  function handleAddLinkedCard() {
+  // Attach a card from the actual board
+  function handleAttachBoardCard(card, status = "In Progress") {
+    const isAlreadyAttached = formLinkedCards.some((c) => c.id === card.id);
+    if (isAlreadyAttached) return;
+
+    const newCard = {
+      id: card.id,
+      cardId: card.id,
+      tag: card.tag || `[${card.listName || "CARD"}]`,
+      title: card.name,
+      status: status,
+      fromBoard: true,
+    };
+    setFormLinkedCards([...formLinkedCards, newCard]);
+  }
+
+  // Quick import all Doing cards assigned to this member on the board
+  function handleQuickImportDoingCards() {
+    const doingCards = assignedCardsForTeammate.filter((c) => c.status === "In Progress" || c.status === "To Do");
+    if (doingCards.length === 0) {
+      showToast(`No active doing cards assigned to ${formTeammate} on the board`);
+      return;
+    }
+
+    const currentIds = new Set(formLinkedCards.map((c) => c.id));
+    const newItems = doingCards
+      .filter((c) => !currentIds.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        cardId: c.id,
+        tag: c.tag || `[${c.listName || "DOING"}]`,
+        title: c.name,
+        status: "In Progress",
+        fromBoard: true,
+      }));
+
+    if (newItems.length === 0) {
+      showToast("All assigned Doing cards are already linked!");
+      return;
+    }
+
+    setFormLinkedCards([...formLinkedCards, ...newItems]);
+    showToast(`⚡ Attached ${newItems.length} board cards from ${formTeammate}'s sprint!`);
+  }
+
+  // Add custom manual task
+  function handleAddCustomTask() {
     if (!newCardTitle.trim()) return;
     const newCard = {
       id: "c_" + Date.now(),
-      tag: newCardTag.trim() || "[CARD]",
+      tag: newCardTag.trim() || "[TASK]",
       title: newCardTitle.trim(),
       status: newCardStatus,
+      fromBoard: false,
     };
     setFormLinkedCards([...formLinkedCards, newCard]);
     setNewCardTitle("");
-    setShowCardPicker(false);
   }
 
   function handleToggleCardStatus(id) {
@@ -374,7 +609,7 @@ export default function StandupApp({ t }) {
   }
 
   // Submit standup from modal
-  function handleSaveStandup(e) {
+  async function handleSaveStandup(e) {
     e.preventDefault();
 
     const targetName = formTeammate || "Alex Rivera";
@@ -399,9 +634,11 @@ export default function StandupApp({ t }) {
 
     const linkedTasks = formLinkedCards.map((c) => ({
       id: c.id,
+      cardId: c.cardId || null,
       tag: c.tag,
       text: c.title,
       status: c.status,
+      fromBoard: Boolean(c.fromBoard),
     }));
 
     const combinedTasks = [...linkedTasks, ...textTasks];
@@ -429,38 +666,67 @@ export default function StandupApp({ t }) {
 
     setTeamMembers(updated);
     closeLogModal();
-    showToast(`✨ Standup published for ${targetName}!`);
 
-    // If running in Trello, update card data
-    if (t && typeof t.set === "function") {
-      t.set("board", "shared", "dailyStandupsLastUpdate", Date.now()).catch(() => {});
-    }
+    // Persist standup to Trello board shared storage and sync card badges
+    const linkedCardIds = formLinkedCards.map((c) => c.cardId || c.id);
+    await saveBoardStandups(t, updated, {
+      linkedCardIds: linkedCardIds,
+      completed: true,
+      hasBlocker: hasBlocker,
+      blockerText: hasBlocker ? formBlockers.trim() : "",
+    });
+
+    showToast(`✨ Standup published & synced to ${boardData.board.name} for ${targetName}!`);
   }
 
   // Compact Card Back Section mode
   if (isCardBackView) {
-    const userStandup = teamMembers[0];
+    // If opened on a specific card, find the card and its assignees
+    const specificCard = cardBackCardId
+      ? boardData.cards.find((c) => c.id === cardBackCardId)
+      : null;
+
+    const assignedMember = specificCard && specificCard.idMembers.length > 0
+      ? teamMembers.find((m) => specificCard.idMembers.includes(m.id))
+      : teamMembers[0];
+
+    const targetStandup = assignedMember || teamMembers[0];
+
     return (
       <div className="card-back-compact-container">
         <div className="card-back-widget">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <StandupLogoIcon width={20} height={20} />
-              <span style={{ fontSize: 13, fontWeight: 700 }}>Today's Standup Status</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>
+                {specificCard ? specificCard.name : "Today's Standup Status"}
+              </span>
             </div>
-            <span className="status-pill submitted">
-              <CheckIcon width={12} height={12} />
-              Submitted
+            <span className={`status-pill ${targetStandup.status === "submitted" ? "submitted" : "unsubmitted"}`}>
+              {targetStandup.status === "submitted" ? (
+                <>
+                  <CheckIcon width={12} height={12} />
+                  Submitted
+                </>
+              ) : (
+                "Pending"
+              )}
             </span>
           </div>
 
           <div style={{ fontSize: 12, color: "var(--ds-text-secondary)", lineHeight: 1.45 }}>
             <p style={{ margin: "0 0 6px 0" }}>
-              <strong style={{ color: "var(--ds-text-primary)" }}>Doing Today: </strong>
-              {userStandup.todayTasks.map((t) => `${t.tag} ${t.text}`).join(", ")}
+              <strong style={{ color: "var(--ds-text-primary)" }}>Assignee: </strong>
+              {targetStandup.name} ({targetStandup.role})
             </p>
-            {userStandup.hasBlocker ? (
-              <p style={{ margin: 0, color: "var(--ds-crimson)" }}>⚠️ Blocker: {userStandup.blockerText}</p>
+            <p style={{ margin: "0 0 6px 0" }}>
+              <strong style={{ color: "var(--ds-text-primary)" }}>Doing Today: </strong>
+              {targetStandup.todayTasks.length > 0
+                ? targetStandup.todayTasks.map((t) => `${t.tag} ${t.text}`).join(", ")
+                : "No active tasks logged"}
+            </p>
+            {targetStandup.hasBlocker ? (
+              <p style={{ margin: 0, color: "var(--ds-crimson)" }}>⚠️ Blocker: {targetStandup.blockerText}</p>
             ) : (
               <p style={{ margin: 0, color: "var(--ds-emerald)" }}>✓ No blockers reported</p>
             )}
@@ -485,6 +751,27 @@ export default function StandupApp({ t }) {
           <div className="brand-wrapper">
             <StandupLogoIcon width={22} height={22} />
             <h1 className="brand-title">Daily Standups</h1>
+          </div>
+
+          {/* Actual Board Name & Sync Pill */}
+          <div className="board-badge-wrap">
+            <span className="live-indicator-dot" title="Live Board Connected"></span>
+            <span className="board-name-tag">
+              <LayersIcon width={13} height={13} style={{ color: "#38bdf8" }} />
+              {boardData.board.name}
+            </span>
+            <span className="board-counts-pill">
+              ({boardData.cards.length} cards, {metrics.totalMembers} members)
+            </span>
+            <button
+              type="button"
+              className={`btn-sync-board ${isSyncing ? "is-syncing" : ""}`}
+              onClick={handleRefreshBoard}
+              title="Re-sync cards and members from Trello board"
+            >
+              <RefreshCwIcon width={12} height={12} />
+              <span>{isSyncing ? "Syncing…" : "Sync"}</span>
+            </button>
           </div>
 
           {/* Date Navigator */}
@@ -577,7 +864,7 @@ export default function StandupApp({ t }) {
           MAIN DASHBOARD BODY
           ==================================================================== */}
       <main className="standup-body">
-        {/* KPI METRIC SUMMARY CARDS (BALANCED PROPORTIONS) */}
+        {/* KPI METRIC SUMMARY CARDS */}
         <section className="kpi-metrics-row">
           {/* Card 1: Submitted */}
           <div className="kpi-card kpi-submitted">
@@ -659,7 +946,7 @@ export default function StandupApp({ t }) {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search team members, tasks, or blockers…"
+                placeholder="Search team members, board cards, or blockers…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -670,7 +957,7 @@ export default function StandupApp({ t }) {
               value={selectedTeammate}
               onChange={(e) => setSelectedTeammate(e.target.value)}
             >
-              <option value="all">All Teammates</option>
+              <option value="all">All Teammates ({teamMembers.length})</option>
               {teamMembers.map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
@@ -725,6 +1012,7 @@ export default function StandupApp({ t }) {
           ) : (
             filteredMembers.map((member) => {
               const isUnsubmitted = member.status === "unsubmitted";
+              const assignedCardsCount = member.assignedCards?.length || 0;
 
               return (
                 <div
@@ -741,7 +1029,15 @@ export default function StandupApp({ t }) {
                         {member.avatar}
                       </div>
                       <div className="member-meta">
-                        <h3 className="member-name">{member.name}</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                          <h3 className="member-name">{member.name}</h3>
+                          {assignedCardsCount > 0 && (
+                            <span className="assigned-cards-count-tag" title={`${assignedCardsCount} cards assigned on this board`}>
+                              <TrelloCardIcon width={10} height={10} />
+                              {assignedCardsCount}
+                            </span>
+                          )}
+                        </div>
                         <p className="member-role-time">
                           <span>{member.role}</span>
                           {!isUnsubmitted && (
@@ -778,7 +1074,9 @@ export default function StandupApp({ t }) {
                       </div>
                       <h4 className="unsubmitted-headline">Standup Pending</h4>
                       <p className="unsubmitted-helper">
-                        No daily update submitted yet for today. Send a friendly reminder nudge.
+                        {assignedCardsCount > 0
+                          ? `${assignedCardsCount} board card${assignedCardsCount > 1 ? "s" : ""} assigned in this sprint. Send a reminder nudge.`
+                          : "No daily update submitted yet for today. Send a friendly reminder nudge."}
                       </p>
                       <button
                         type="button"
@@ -857,10 +1155,7 @@ export default function StandupApp({ t }) {
       </main>
 
       {/* ====================================================================
-          MODAL: LOG DAILY STANDUP
-          ==================================================================== */}
-      {/* ====================================================================
-          MODAL: LOG DAILY STANDUP (Screenshot Specification)
+          MODAL: LOG DAILY STANDUP WITH ACTUAL BOARD CARD INTEGRATION
           ==================================================================== */}
       {isLogModalOpen && (
         <div className="modal-backdrop" onClick={closeLogModal}>
@@ -872,7 +1167,7 @@ export default function StandupApp({ t }) {
                 <div>
                   <h2 className="modal-title">Log Daily Standup</h2>
                   <p className="modal-subtitle">
-                    Sync yesterday's work, today's focus, and linked cards
+                    Sync yesterday's work, today's focus, and cards from {boardData.board.name}
                   </p>
                 </div>
               </div>
@@ -958,7 +1253,7 @@ export default function StandupApp({ t }) {
                   />
                 </div>
 
-                {/* LINKED TRELLO CARDS (Check status as Doing or Done) */}
+                {/* LINKED TRELLO CARDS WITH LIVE BOARD INTEGRATION */}
                 <div className="modal-section-group">
                   <div className="linked-cards-header-line">
                     <div className="linked-cards-title-wrap">
@@ -966,58 +1261,164 @@ export default function StandupApp({ t }) {
                         LINKED TRELLO CARDS
                       </span>
                       <span className="linked-cards-hint">
-                        (Check status as Doing or Done)
+                        (Select from board cards or link Doing/Done)
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      className="btn-link-card-action"
-                      onClick={() => setShowCardPicker(!showCardPicker)}
-                    >
-                      <PlusIcon width={13} height={13} />
-                      <span>Link Card</span>
-                    </button>
-                  </div>
-
-                  {/* Optional Interactive Card Linker */}
-                  {showCardPicker && (
-                    <div className="link-card-picker-box">
-                      <input
-                        type="text"
-                        className="card-picker-input"
-                        placeholder="[TAG]"
-                        value={newCardTag}
-                        onChange={(e) => setNewCardTag(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        className="card-picker-input-title"
-                        placeholder="Card title from board..."
-                        value={newCardTitle}
-                        onChange={(e) => setNewCardTitle(e.target.value)}
-                      />
-                      <select
-                        className="card-picker-status"
-                        value={newCardStatus}
-                        onChange={(e) => setNewCardStatus(e.target.value)}
-                      >
-                        <option value="In Progress">Doing</option>
-                        <option value="Done">Done</option>
-                      </select>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <button
                         type="button"
-                        className="btn-add-card-confirm"
-                        onClick={handleAddLinkedCard}
+                        className="btn-link-card-action"
+                        onClick={() => setShowCardPicker(!showCardPicker)}
                       >
-                        Attach
+                        <PlusIcon width={13} height={13} />
+                        <span>{showCardPicker ? "Hide Card Picker" : "Attach from Board"}</span>
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Interactive Board Card Picker */}
+                  {showCardPicker && (
+                    <div className="board-card-picker-wrap">
+                      <div className="picker-tabs-row">
+                        <div className="picker-tabs-group">
+                          <button
+                            type="button"
+                            className={`picker-tab-btn ${cardPickerTab === "assigned" ? "active" : ""}`}
+                            onClick={() => setCardPickerTab("assigned")}
+                          >
+                            Assigned to {formTeammate.split(" ")[0]} ({assignedCardsForTeammate.length})
+                          </button>
+                          <button
+                            type="button"
+                            className={`picker-tab-btn ${cardPickerTab === "all" ? "active" : ""}`}
+                            onClick={() => setCardPickerTab("all")}
+                          >
+                            All Board Cards ({boardData.cards.length})
+                          </button>
+                          <button
+                            type="button"
+                            className={`picker-tab-btn ${cardPickerTab === "custom" ? "active" : ""}`}
+                            onClick={() => setCardPickerTab("custom")}
+                          >
+                            Custom Task
+                          </button>
+                        </div>
+
+                        {cardPickerTab === "assigned" && assignedCardsForTeammate.length > 0 && (
+                          <button
+                            type="button"
+                            className="btn-quick-import"
+                            onClick={handleQuickImportDoingCards}
+                          >
+                            ⚡ Auto-import assigned Doing cards
+                          </button>
+                        )}
+                      </div>
+
+                      {cardPickerTab !== "custom" ? (
+                        <>
+                          <input
+                            type="text"
+                            className="picker-search-input"
+                            placeholder="Search board cards by title or list..."
+                            value={cardPickerSearch}
+                            onChange={(e) => setCardPickerSearch(e.target.value)}
+                          />
+
+                          <div className="board-cards-scroll-box">
+                            {filteredPickerCards.length === 0 ? (
+                              <p style={{ margin: "10px 0", fontSize: 12, color: "var(--ds-text-muted)", textAlign: "center" }}>
+                                No cards found matching this filter.
+                              </p>
+                            ) : (
+                              filteredPickerCards.map((card) => {
+                                const isAttached = formLinkedCards.some((c) => c.id === card.id);
+                                let statusPillClass = "to-do";
+                                if (card.status === "In Progress") statusPillClass = "in-progress";
+                                if (card.status === "Done") statusPillClass = "done";
+                                if (card.status === "Blocked") statusPillClass = "blocked";
+
+                                return (
+                                  <div key={card.id} className="board-card-item-row">
+                                    <div className="board-card-info-left">
+                                      <TrelloCardIcon width={13} height={13} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                                      <span className={`board-list-pill ${statusPillClass}`}>
+                                        {card.listName}
+                                      </span>
+                                      <span className="board-card-title-text" title={card.name}>
+                                        {card.name}
+                                      </span>
+                                    </div>
+
+                                    {isAttached ? (
+                                      <span className="btn-attach-card-action already-attached">
+                                        ✓ Linked
+                                      </span>
+                                    ) : (
+                                      <div style={{ display: "flex", gap: 5 }}>
+                                        <button
+                                          type="button"
+                                          className="btn-attach-card-action"
+                                          onClick={() => handleAttachBoardCard(card, "In Progress")}
+                                        >
+                                          + Doing
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn-attach-card-action"
+                                          style={{ background: "#059669" }}
+                                          onClick={() => handleAttachBoardCard(card, "Done")}
+                                        >
+                                          + Done
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="link-card-picker-box" style={{ margin: 0 }}>
+                          <input
+                            type="text"
+                            className="card-picker-input"
+                            placeholder="[TAG]"
+                            value={newCardTag}
+                            onChange={(e) => setNewCardTag(e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            className="card-picker-input-title"
+                            placeholder="Task description or card title..."
+                            value={newCardTitle}
+                            onChange={(e) => setNewCardTitle(e.target.value)}
+                          />
+                          <select
+                            className="card-picker-status"
+                            value={newCardStatus}
+                            onChange={(e) => setNewCardStatus(e.target.value)}
+                          >
+                            <option value="In Progress">Doing</option>
+                            <option value="Done">Done</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-add-card-confirm"
+                            onClick={handleAddCustomTask}
+                          >
+                            Attach
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Empty state or list */}
+                  {/* Attached Cards List */}
                   {formLinkedCards.length === 0 ? (
                     <p className="linked-cards-empty-helper">
-                      No cards linked yet. Click "+ Link Card" to attach board cards with Doing or Done status.
+                      No cards linked yet. Click "+ Attach from Board" to attach board cards with Doing or Done status.
                     </p>
                   ) : (
                     <div className="modal-linked-cards-list">
