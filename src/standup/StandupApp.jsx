@@ -1368,9 +1368,6 @@ export default function StandupApp({ t }) {
                   key={member.id}
                   className={`standup-member-card ${isUnsubmitted ? "is-unsubmitted" : ""}`}
                 >
-                  {/* Signature Member Accent Strip */}
-                  <div className="card-top-accent-bar" style={{ background: member.avatarBg }} />
-
                   {/* Card Header */}
                   <div className="card-member-header">
                     <div className="member-identity">
@@ -1467,23 +1464,11 @@ export default function StandupApp({ t }) {
                       <div className="unsubmitted-actions-row">
                         <button
                           type="button"
-                          className="btn-quick-log"
-                          onClick={() => {
-                            setFormTeammate(member.name);
-                            openLogModal();
-                          }}
-                          title={`Log standup for ${member.name}`}
-                        >
-                          <PlusIcon width={12} height={12} />
-                          <span>Log Standup</span>
-                        </button>
-                        <button
-                          type="button"
                           className="btn-send-nudge"
                           onClick={() => handleSendNudge(member.name)}
                         >
                           <BellIcon width={12} height={12} />
-                          <span>Nudge</span>
+                          <span>Send Reminder</span>
                         </button>
                       </div>
                     </div>
