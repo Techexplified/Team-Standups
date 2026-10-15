@@ -675,7 +675,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -684,6 +685,9 @@ html, body {
   display: flex;
   align-items: center;
   gap: 11px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .member-avatar {
@@ -705,6 +709,15 @@ html, body {
 .member-meta {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
 }
 
 .member-name {
@@ -713,6 +726,9 @@ html, body {
   color: var(--ds-text-primary);
   margin: 0;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .member-role-time {
@@ -722,6 +738,16 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Single Aligned Header Status Pill */
+.card-header-status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 /* Status Pills */
@@ -733,6 +759,8 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-pill.submitted {
@@ -751,6 +779,41 @@ html, body {
   background: rgba(245, 158, 11, 0.12);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+/* Dedicated Scribe / Proxy Attribution Banner inside Card */
+.card-scribe-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: #cbd5e1;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 6px;
+  padding: 6px 11px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.card-scribe-banner strong {
+  color: #c7d2fe;
+  font-weight: 600;
+}
+
+.card-scribe-banner .scribe-banner-icon {
+  color: #818cf8;
+  flex-shrink: 0;
+}
+
+/* Main Standup Content Body Container (Pins footer to baseline) */
+.card-content-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Crimson Blocker Alert Banner */
@@ -802,15 +865,34 @@ html, body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 6px 10px;
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .checklist-icon {
   color: var(--ds-emerald);
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 2px;
+}
+
+/* Clean Reassuring All-Clear Tag for Blockers */
+.blockers-none-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.07);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-weight: 500;
 }
 
 /* Linked Trello Card Pills */
@@ -1934,11 +2016,67 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Collapsed Compact Bar */
-.comments-collapsed-bar {
+/* Card Footer Action Bar (Balanced footer across all cards) */
+.card-footer-bar {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Quick Edit Button in Card Footer */
+.btn-card-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  height: 28px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn-card-edit:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  transform: translateY(-0.5px);
+}
+
+.btn-card-edit-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  height: 24px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-card-edit-compact:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
 }
 
 .comments-toggle-btn {
@@ -2579,7 +2717,8 @@ html, body {
   border: 1px solid rgba(99, 102, 241, 0.28);
   color: #c7d2fe;
   padding: 0 12px;
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .btn-quick-checkin.is-proxy-checkin:hover {
@@ -2599,7 +2738,8 @@ html, body {
 }
 
 .unsubmitted-actions-row .btn-send-nudge {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   width: auto;
   white-space: nowrap;
 }
@@ -2746,6 +2886,54 @@ html, body {
 .standup-app-container.theme-light .btn-quick-checkin.is-proxy-checkin:hover {
   background: rgba(99, 102, 241, 0.16);
   color: #312e81;
+}
+
+.standup-app-container.theme-light .card-member-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.standup-app-container.theme-light .card-scribe-banner {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #475569;
+}
+
+.standup-app-container.theme-light .card-scribe-banner strong {
+  color: #4338ca;
+}
+
+.standup-app-container.theme-light .card-scribe-banner .scribe-banner-icon {
+  color: #6366f1;
+}
+
+.standup-app-container.theme-light .card-footer-bar {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.standup-app-container.theme-light .btn-card-edit,
+.standup-app-container.theme-light .btn-card-edit-compact {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+.standup-app-container.theme-light .btn-card-edit:hover,
+.standup-app-container.theme-light .btn-card-edit-compact:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.standup-app-container.theme-light .checklist-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.standup-app-container.theme-light .blockers-none-tag {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #065f46;
 }
 
 

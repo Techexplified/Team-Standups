@@ -1576,7 +1576,7 @@ export default function StandupApp({ t }) {
                         {member.avatar}
                       </div>
                       <div className="member-meta">
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                        <div className="member-name-row">
                           <h3 className="member-name">{member.name}</h3>
                           {isMemberCurrentUser && (
                             <span className="current-user-tag" title="You are currently active as this teammate">
@@ -1598,38 +1598,12 @@ export default function StandupApp({ t }) {
                               <span>{member.timestamp}</span>
                             </>
                           )}
-                          {!isUnsubmitted && member.loggedBy?.isProxy && (
-                            <>
-                              <span>•</span>
-                              <span
-                                className="proxy-inline-pill"
-                                title={`Logged by ${member.loggedBy.name} on behalf of ${member.name}`}
-                              >
-                                via {(member.loggedBy.name || "").split(" ")[0]}
-                              </span>
-                            </>
-                          )}
                         </p>
                       </div>
                     </div>
 
-                    {/* Status Pill & Quick Edit */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      {!isUnsubmitted && (
-                        <button
-                          type="button"
-                          className="btn-edit-standup"
-                          onClick={() => handleOpenEditModal(member)}
-                          title={
-                            isMemberCurrentUser
-                              ? `Edit your standup update`
-                              : `Edit standup on behalf of ${member.name}`
-                          }
-                        >
-                          <EditIcon width={11} height={11} />
-                          <span>Edit</span>
-                        </button>
-                      )}
+                    {/* Clean Status Pill (Single, balanced, never crowded) */}
+                    <div className="card-header-status">
                       {member.hasBlocker ? (
                         <span className="status-pill blocker">
                           <AlertTriangleIcon width={12} height={12} />
@@ -1645,6 +1619,19 @@ export default function StandupApp({ t }) {
                       )}
                     </div>
                   </div>
+
+                  {/* Dedicated Scribe / Proxy Attribution Banner */}
+                  {!isUnsubmitted && member.loggedBy?.isProxy && (
+                    <div
+                      className="card-scribe-banner"
+                      title={`Logged by ${member.loggedBy.name || "Teammate"} on behalf of ${member.name}`}
+                    >
+                      <UsersIcon width={12} height={12} className="scribe-banner-icon" />
+                      <span>
+                        Logged by <strong>{member.loggedBy.name || "Teammate"}</strong> (on behalf)
+                      </span>
+                    </div>
+                  )}
 
                   {/* UN-SUBMITTED STATE */}
                   {isUnsubmitted ? (
@@ -1741,7 +1728,7 @@ export default function StandupApp({ t }) {
                     </div>
                   ) : (
                     /* SUBMITTED STATE */
-                    <>
+                    <div className="card-content-body">
                       {/* Active Crimson Blocker Banner */}
                       {member.hasBlocker && (
                         <div className="blocker-alert-banner">
@@ -1834,14 +1821,14 @@ export default function StandupApp({ t }) {
                           <span className="blockers-none-tag">✓ None reported</span>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
 
-                  {/* COMMENTS SECTION (Collapsible by default to eliminate card clutter) */}
+                  {/* COMMENTS SECTION & QUICK ACTIONS (Balanced footer bar) */}
                   <div className="card-comments-section">
                     {!expandedComments[member.id] ? (
-                      /* Collapsed Compact Trigger */
-                      <div className="comments-collapsed-bar">
+                      /* Collapsed Compact Footer Bar with Quick Edit Action */
+                      <div className="card-footer-bar">
                         <button
                           type="button"
                           className={`comments-toggle-btn ${
@@ -1870,6 +1857,22 @@ export default function StandupApp({ t }) {
                             <span className="comments-plus-sign">+</span>
                           )}
                         </button>
+
+                        {!isUnsubmitted && (
+                          <button
+                            type="button"
+                            className="btn-card-edit"
+                            onClick={() => handleOpenEditModal(member)}
+                            title={
+                              isMemberCurrentUser
+                                ? `Edit your standup update`
+                                : `Edit standup on behalf of ${member.name}`
+                            }
+                          >
+                            <EditIcon width={12} height={12} />
+                            <span>Edit</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       /* Expanded Comments View */
@@ -1894,15 +1897,34 @@ export default function StandupApp({ t }) {
                               className="toggle-chevron is-open"
                             />
                           </button>
-                          <button
-                            type="button"
-                            className="comments-collapse-btn"
-                            onClick={() => toggleComments(member.id)}
-                            title="Collapse comments"
-                          >
-                            Hide
-                          </button>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {!isUnsubmitted && (
+                              <button
+                                type="button"
+                                className="btn-card-edit-compact"
+                                onClick={() => handleOpenEditModal(member)}
+                                title={
+                                  isMemberCurrentUser
+                                    ? `Edit your standup update`
+                                    : `Edit standup on behalf of ${member.name}`
+                                }
+                              >
+                                <EditIcon width={11} height={11} />
+                                <span>Edit</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="comments-collapse-btn"
+                              onClick={() => toggleComments(member.id)}
+                              title="Collapse comments"
+                            >
+                              Hide
+                            </button>
+                          </div>
                         </div>
+
 
                         {/* Display comments list */}
                         {Array.isArray(member.comments) && member.comments.length > 0 ? (
