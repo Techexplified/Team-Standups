@@ -30,6 +30,10 @@ import {
   MoonIcon,
   ChevronDownIcon,
   TrashIcon,
+  UsersIcon,
+  UserIcon,
+  UserCheckIcon,
+  InfoIcon,
 } from "../lib/icons.jsx";
 import "./standup.css";
 
@@ -107,6 +111,12 @@ const INITIAL_TEAM_MEMBERS = [
     hasBlocker: true,
     blockerText: "Waiting on staging database credentials from DevOps team (ticket #DEVOPS-992).",
     assignedCards: [],
+    loggedBy: {
+      id: "m0",
+      name: "Alex Rivera",
+      isProxy: true,
+      timestamp: "9:42 AM",
+    },
     comments: [
       {
         id: "c2",
@@ -354,6 +364,23 @@ export default function StandupApp({ t }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authorized, setAuthorized] = useState(false);
 
+  // Active authenticated member identification
+  const activeUser = useMemo(() => {
+    return currentUser || boardData.currentMember || null;
+  }, [currentUser, boardData.currentMember]);
+
+  const currentUserMember = useMemo(() => {
+    if (!activeUser) return null;
+    return (
+      teamMembers.find((m) => {
+        const nameMatch = activeUser.fullName && m.name.toLowerCase() === activeUser.fullName.toLowerCase();
+        const idMatch = activeUser.id && (m.id === activeUser.id || m.id === "m_" + activeUser.id || activeUser.id.includes(m.id));
+        const usernameMatch = activeUser.username && m.username && m.username.toLowerCase() === activeUser.username.toLowerCase();
+        return Boolean(nameMatch || idMatch || usernameMatch);
+      }) || null
+    );
+  }, [teamMembers, activeUser]);
+
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeammate, setSelectedTeammate] = useState("all");
@@ -367,6 +394,12 @@ export default function StandupApp({ t }) {
   const [formDoingToday, setFormDoingToday] = useState("");
   const [formBlockers, setFormBlockers] = useState("");
   const [formLinkedCards, setFormLinkedCards] = useState([]);
+
+  // Check if current user is logging standup on behalf of a different teammate (Scribe / Proxy mode)
+  const isLoggingOnBehalf = useMemo(() => {
+    if (!currentUserMember) return false;
+    return currentUserMember.name.toLowerCase() !== formTeammate.toLowerCase();
+  }, [currentUserMember, formTeammate]);
 
   // Board Card Picker State inside Modal
   const [showCardPicker, setShowCardPicker] = useState(false);
@@ -806,10 +839,59 @@ export default function StandupApp({ t }) {
     setCurrentDate(d);
   }
 
-  // Open / Close modal
-  function openLogModal() {
-    setFormDate(formatDateKey(currentDate));
+  // Populate modal form values for a given member
+  function populateFormForMember(member, targetDate = null) {
+    if (!member) return;
+    setFormTeammate(member.name);
+    if (targetDate) setFormDate(targetDate);
+
+    setFormYesterday((member.yesterdayItems || []).join("\n"));
+
+    const boardCardsAttached = [];
+    const customLines = [];
+
+    (member.todayTasks || []).forEach((task) => {
+      if (task.fromBoard || task.cardId || (task.tag && task.tag !== "[DOING]")) {
+        boardCardsAttached.push({
+          id: task.id,
+          cardId: task.cardId || task.id,
+          tag: task.tag,
+          title: task.text,
+          status: task.status,
+          fromBoard: Boolean(task.fromBoard),
+        });
+      } else {
+        customLines.push(task.text);
+      }
+    });
+
+    setFormLinkedCards(boardCardsAttached);
+    setFormDoingToday(customLines.join("\n"));
+    setFormBlockers(member.blockerText || "");
+  }
+
+  // Open / Close modal with smart user pre-selection
+  function openLogModal(targetMember = null) {
+    const chosenMember =
+      targetMember ||
+      (currentUserMember ? currentUserMember : teamMembers.find((m) => m.name === formTeammate)) ||
+      teamMembers[0];
+
+    const targetDate = formatDateKey(currentDate);
+    setFormDate(targetDate);
+    if (chosenMember) {
+      populateFormForMember(chosenMember, targetDate);
+    }
     setIsLogModalOpen(true);
+  }
+
+  // Switch teammate in modal and load that teammate's standup
+  function handleSelectFormTeammate(teammateName) {
+    setFormTeammate(teammateName);
+    const targetMember = teamMembers.find((m) => m.name === teammateName);
+    if (targetMember) {
+      populateFormForMember(targetMember);
+    }
   }
 
   function closeLogModal() {
@@ -985,32 +1067,7 @@ export default function StandupApp({ t }) {
 
   // Open Edit Modal pre-populated with member's current standup
   function handleOpenEditModal(member) {
-    setFormTeammate(member.name);
-    setFormDate(dateKey);
-    setFormYesterday((member.yesterdayItems || []).join("\n"));
-
-    // Split tasks into attached board cards and custom text tasks
-    const boardCardsAttached = [];
-    const customLines = [];
-
-    (member.todayTasks || []).forEach((task) => {
-      if (task.fromBoard || task.cardId || (task.tag && task.tag !== "[DOING]")) {
-        boardCardsAttached.push({
-          id: task.id,
-          cardId: task.cardId || task.id,
-          tag: task.tag,
-          title: task.text,
-          status: task.status,
-          fromBoard: Boolean(task.fromBoard),
-        });
-      } else {
-        customLines.push(task.text);
-      }
-    });
-
-    setFormLinkedCards(boardCardsAttached);
-    setFormDoingToday(customLines.join("\n"));
-    setFormBlockers(member.blockerText || "");
+    populateFormForMember(member, dateKey);
     setIsLogModalOpen(true);
   }
 
@@ -1060,6 +1117,16 @@ export default function StandupApp({ t }) {
       combinedTasks.length === 0 &&
       !hasBlocker;
 
+    const loggedByData = isLoggingOnBehalf && !isCompletelyEmpty
+      ? {
+          id: activeUser?.id || "u_proxy",
+          name: activeUser?.fullName || currentUserMember?.name || "Sprint Teammate",
+          username: activeUser?.username || null,
+          isProxy: true,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }
+      : null;
+
     const updated = teamMembers.map((m) => {
       if (m.name === targetName || m.id === activeFormMember?.id || (targetName === "Alex Rivera" && m.id === "m0")) {
         return {
@@ -1070,6 +1137,7 @@ export default function StandupApp({ t }) {
           todayTasks: combinedTasks,
           hasBlocker: hasBlocker,
           blockerText: hasBlocker ? formBlockers.trim() : "",
+          loggedBy: isCompletelyEmpty ? null : loggedByData,
         };
       }
       return m;
@@ -1092,7 +1160,11 @@ export default function StandupApp({ t }) {
       formDate || dateKey
     );
 
-    showToast(`✨ Standup updated & synced for ${targetName}!`);
+    if (isLoggingOnBehalf && loggedByData) {
+      showToast(`✨ Standup logged for ${targetName} (on behalf by ${loggedByData.name})!`);
+    } else {
+      showToast(`✨ Standup updated & synced for ${targetName}!`);
+    }
   }
 
   // Compact Card Back Section mode
@@ -1468,6 +1540,11 @@ export default function StandupApp({ t }) {
             filteredMembers.map((member) => {
               const isUnsubmitted = member.status === "unsubmitted";
               const assignedCardsCount = member.assignedCards?.length || 0;
+              const isMemberCurrentUser = Boolean(
+                currentUserMember &&
+                  (currentUserMember.id === member.id ||
+                    currentUserMember.name.toLowerCase() === member.name.toLowerCase())
+              );
 
               return (
                 <div
@@ -1484,8 +1561,13 @@ export default function StandupApp({ t }) {
                         {member.avatar}
                       </div>
                       <div className="member-meta">
-                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                           <h3 className="member-name">{member.name}</h3>
+                          {isMemberCurrentUser && (
+                            <span className="current-user-tag" title="You are currently active as this teammate">
+                              You
+                            </span>
+                          )}
                           {assignedCardsCount > 0 && (
                             <span className="assigned-cards-count-tag" title={`${assignedCardsCount} cards assigned on this board`}>
                               <TrelloCardIcon width={10} height={10} />
@@ -1502,6 +1584,17 @@ export default function StandupApp({ t }) {
                             </>
                           )}
                         </p>
+                        {!isUnsubmitted && member.loggedBy?.isProxy && (
+                          <div
+                            className="proxy-stamp-badge"
+                            title={`Submitted by ${member.loggedBy.name} on behalf of ${member.name}`}
+                          >
+                            <UsersIcon width={11} height={11} />
+                            <span>
+                              Logged by <strong>{member.loggedBy.name}</strong> (on behalf)
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1510,12 +1603,16 @@ export default function StandupApp({ t }) {
                       {!isUnsubmitted && (
                         <button
                           type="button"
-                          className="btn-edit-standup"
+                          className={`btn-edit-standup ${isMemberCurrentUser ? "" : "is-proxy-edit"}`}
                           onClick={() => handleOpenEditModal(member)}
-                          title={`Edit standup update for ${member.name}`}
+                          title={
+                            isMemberCurrentUser
+                              ? `Edit your standup update`
+                              : `Edit standup on behalf of ${member.name}`
+                          }
                         >
                           <EditIcon width={11} height={11} />
-                          <span>Edit</span>
+                          <span>{isMemberCurrentUser ? "Edit" : "Edit for Teammate"}</span>
                         </button>
                       )}
                       {member.hasBlocker ? (
@@ -1568,6 +1665,19 @@ export default function StandupApp({ t }) {
                       )}
 
                       <div className="unsubmitted-actions-row">
+                        <button
+                          type="button"
+                          className={`btn-quick-checkin ${isMemberCurrentUser ? "is-self-checkin" : "is-proxy-checkin"}`}
+                          onClick={() => handleOpenEditModal(member)}
+                          title={
+                            isMemberCurrentUser
+                              ? "Log your standup check-in"
+                              : `Log check-in on behalf of ${member.name}`
+                          }
+                        >
+                          <PlusIcon width={12} height={12} />
+                          <span>{isMemberCurrentUser ? "Check In" : `Log for ${member.name.split(" ")[0]}`}</span>
+                        </button>
                         {(() => {
                           const isNudged = Boolean(nudgedMembers[member.id]);
                           const nudgeInfo = nudgedMembers[member.id];
@@ -1890,22 +2000,41 @@ export default function StandupApp({ t }) {
                 {/* Top Row: Teammate & Standup Date */}
                 <div className="modal-top-row">
                   <div className="modal-field-col">
-                    <label className="modal-field-label">Teammate</label>
+                    <div className="modal-field-label-row">
+                      <label className="modal-field-label">Teammate</label>
+                      {currentUserMember && (
+                        <span className={`modal-user-pill ${isLoggingOnBehalf ? "is-proxy" : "is-self"}`}>
+                          {isLoggingOnBehalf ? (
+                            <>
+                              <UsersIcon width={11} height={11} />
+                              <span>Proxy for {formTeammate.split(" ")[0]}</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserCheckIcon width={11} height={11} />
+                              <span>Your Standup</span>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
                     <select
                       className="modal-select"
                       value={formTeammate}
-                      onChange={(e) => setFormTeammate(e.target.value)}
+                      onChange={(e) => handleSelectFormTeammate(e.target.value)}
                     >
                       {teamMembers.map((m) => (
                         <option key={m.id} value={m.name}>
-                          {m.name} ({m.role})
+                          {m.name} {currentUserMember?.name === m.name ? "(You)" : `(${m.role})`}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div className="modal-field-col">
-                    <label className="modal-field-label">Standup Date</label>
+                    <div className="modal-field-label-row">
+                      <label className="modal-field-label">Standup Date</label>
+                    </div>
                     <input
                       type="date"
                       className="modal-date-input"
@@ -1914,6 +2043,34 @@ export default function StandupApp({ t }) {
                     />
                   </div>
                 </div>
+
+                {/* Scribe / On-Behalf Mode Attribution Notice */}
+                {isLoggingOnBehalf && (
+                  <div className="proxy-attribution-banner">
+                    <div className="proxy-banner-left">
+                      <div className="proxy-banner-icon-bubble">
+                        <UsersIcon width={15} height={15} />
+                      </div>
+                      <div className="proxy-banner-text">
+                        <div className="proxy-banner-title">
+                          Scribe / On-Behalf Mode
+                        </div>
+                        <p className="proxy-banner-desc">
+                          You are logging this update for <strong>{formTeammate}</strong>. An attribution stamp will be displayed indicating that it was submitted by <em>{activeUser?.fullName || currentUserMember?.name || "you"}</em>.
+                        </p>
+                      </div>
+                    </div>
+                    {currentUserMember && (
+                      <button
+                        type="button"
+                        className="btn-switch-to-self"
+                        onClick={() => handleSelectFormTeammate(currentUserMember.name)}
+                      >
+                        Switch to my update
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* 1. WHAT DID YOU ACCOMPLISH YESTERDAY? */}
                 <div className="modal-section-group">
@@ -2170,7 +2327,9 @@ export default function StandupApp({ t }) {
                   Cancel
                 </button>
                 <button type="submit" className="btn-save-publish">
-                  Save & Publish Standup
+                  {isLoggingOnBehalf
+                    ? `Publish Update for ${formTeammate.split(" ")[0]}`
+                    : "Save & Publish Standup"}
                 </button>
               </div>
             </form>

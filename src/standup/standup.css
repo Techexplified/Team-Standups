@@ -2512,5 +2512,268 @@ html, body {
   color: #0f172a;
 }
 
+/* ==========================================================================
+   SCRIBE & PROXY ATTRIBUTION STYLES
+   ========================================================================== */
+
+/* Current user "You" tag */
+.current-user-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1.5px 7px;
+  border-radius: var(--ds-radius-full);
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+/* Proxy attribution badge on submitted standup cards */
+.proxy-stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: var(--ds-radius-sm);
+  padding: 2.5px 8px;
+  margin-top: 5px;
+  width: fit-content;
+}
+
+.proxy-stamp-badge strong {
+  color: #c7d2fe;
+}
+
+/* Quick Check-in button on unsubmitted cards */
+.btn-quick-checkin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--ds-radius-sm);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.btn-quick-checkin:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-quick-checkin.is-proxy-checkin {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  box-shadow: none;
+}
+
+.btn-quick-checkin.is-proxy-checkin:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: #818cf8;
+  color: #ffffff;
+}
+
+.btn-edit-standup.is-proxy-edit {
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.btn-edit-standup.is-proxy-edit:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
+}
+
+/* Modal Field Label Row with Status Pill */
+.modal-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.modal-field-label-row .modal-field-label {
+  margin-bottom: 0;
+}
+
+.modal-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-full);
+}
+
+.modal-user-pill.is-self {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.modal-user-pill.is-proxy {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+/* Scribe / Proxy attribution banner inside modal */
+.proxy-attribution-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: var(--ds-radius-md);
+  animation: fadeIn 0.2s ease-in-out;
+  flex-wrap: wrap;
+}
+
+.proxy-banner-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.proxy-banner-icon-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ds-radius-sm);
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.proxy-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.proxy-banner-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.proxy-banner-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.proxy-banner-desc strong {
+  color: #f8fafc;
+}
+
+.proxy-banner-desc em {
+  font-style: normal;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.btn-switch-to-self {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fef3c7;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--ds-radius-sm);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-switch-to-self:hover {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+/* Light Theme Overrides */
+.standup-app-container.theme-light .current-user-tag {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.standup-app-container.theme-light .proxy-stamp-badge {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.22);
+  color: #4338ca;
+}
+
+.standup-app-container.theme-light .proxy-stamp-badge strong {
+  color: #312e81;
+}
+
+.standup-app-container.theme-light .proxy-attribution-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.standup-app-container.theme-light .proxy-banner-title {
+  color: #b45309;
+}
+
+.standup-app-container.theme-light .proxy-banner-desc {
+  color: #334155;
+}
+
+.standup-app-container.theme-light .proxy-banner-desc strong {
+  color: #0f172a;
+}
+
+.standup-app-container.theme-light .proxy-banner-desc em {
+  color: #b45309;
+}
+
+.standup-app-container.theme-light .btn-switch-to-self {
+  background: #ffffff;
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.standup-app-container.theme-light .btn-switch-to-self:hover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+.standup-app-container.theme-light .btn-quick-checkin.is-proxy-checkin {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #4338ca;
+}
+
+.standup-app-container.theme-light .btn-quick-checkin.is-proxy-checkin:hover {
+  background: rgba(99, 102, 241, 0.16);
+  color: #312e81;
+}
+
 
 
