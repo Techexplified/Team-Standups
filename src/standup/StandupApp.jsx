@@ -397,9 +397,14 @@ export default function StandupApp({ t }) {
 
   // Check if current user is logging standup on behalf of a different teammate (Scribe / Proxy mode)
   const isLoggingOnBehalf = useMemo(() => {
-    if (!currentUserMember) return false;
+    if (!currentUserMember || !formTeammate) return false;
     return currentUserMember.name.toLowerCase() !== formTeammate.toLowerCase();
   }, [currentUserMember, formTeammate]);
+
+  const targetTeammateShort = useMemo(() => {
+    if (!formTeammate) return "Teammate";
+    return formTeammate.split(" ")[0] || "Teammate";
+  }, [formTeammate]);
 
   // Board Card Picker State inside Modal
   const [showCardPicker, setShowCardPicker] = useState(false);
@@ -841,7 +846,7 @@ export default function StandupApp({ t }) {
 
   // Populate modal form values for a given member
   function populateFormForMember(member, targetDate = null) {
-    if (!member) return;
+    if (!member || typeof member !== "object" || !member.name) return;
     setFormTeammate(member.name);
     if (targetDate) setFormDate(targetDate);
 
@@ -872,15 +877,25 @@ export default function StandupApp({ t }) {
 
   // Open / Close modal with smart user pre-selection
   function openLogModal(targetMember = null) {
+    const isEvent = Boolean(
+      targetMember &&
+        (targetMember.nativeEvent ||
+          targetMember.target ||
+          typeof targetMember.preventDefault === "function")
+    );
+    const validMember = !isEvent && targetMember && targetMember.name ? targetMember : null;
     const chosenMember =
-      targetMember ||
-      (currentUserMember ? currentUserMember : teamMembers.find((m) => m.name === formTeammate)) ||
+      validMember ||
+      currentUserMember ||
+      (formTeammate ? teamMembers.find((m) => m.name === formTeammate) : null) ||
       teamMembers[0];
 
     const targetDate = formatDateKey(currentDate);
     setFormDate(targetDate);
-    if (chosenMember) {
+    if (chosenMember && chosenMember.name) {
       populateFormForMember(chosenMember, targetDate);
+    } else if (teamMembers[0]) {
+      populateFormForMember(teamMembers[0], targetDate);
     }
     setIsLogModalOpen(true);
   }
@@ -1361,7 +1376,7 @@ export default function StandupApp({ t }) {
           </button>
 
           {/* Primary Action Button */}
-          <button type="button" className="btn-log-standup" onClick={openLogModal}>
+          <button type="button" className="btn-log-standup" onClick={() => openLogModal()}>
             <PlusIcon width={14} height={14} />
             <span>Log Standup</span>
           </button>
@@ -1583,18 +1598,18 @@ export default function StandupApp({ t }) {
                               <span>{member.timestamp}</span>
                             </>
                           )}
+                          {!isUnsubmitted && member.loggedBy?.isProxy && (
+                            <>
+                              <span>•</span>
+                              <span
+                                className="proxy-inline-pill"
+                                title={`Logged by ${member.loggedBy.name} on behalf of ${member.name}`}
+                              >
+                                via {(member.loggedBy.name || "").split(" ")[0]}
+                              </span>
+                            </>
+                          )}
                         </p>
-                        {!isUnsubmitted && member.loggedBy?.isProxy && (
-                          <div
-                            className="proxy-stamp-badge"
-                            title={`Submitted by ${member.loggedBy.name} on behalf of ${member.name}`}
-                          >
-                            <UsersIcon width={11} height={11} />
-                            <span>
-                              Logged by <strong>{member.loggedBy.name}</strong> (on behalf)
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -1603,7 +1618,7 @@ export default function StandupApp({ t }) {
                       {!isUnsubmitted && (
                         <button
                           type="button"
-                          className={`btn-edit-standup ${isMemberCurrentUser ? "" : "is-proxy-edit"}`}
+                          className="btn-edit-standup"
                           onClick={() => handleOpenEditModal(member)}
                           title={
                             isMemberCurrentUser
@@ -1612,7 +1627,7 @@ export default function StandupApp({ t }) {
                           }
                         >
                           <EditIcon width={11} height={11} />
-                          <span>{isMemberCurrentUser ? "Edit" : "Edit for Teammate"}</span>
+                          <span>Edit</span>
                         </button>
                       )}
                       {member.hasBlocker ? (
@@ -1665,53 +1680,63 @@ export default function StandupApp({ t }) {
                       )}
 
                       <div className="unsubmitted-actions-row">
-                        <button
-                          type="button"
-                          className={`btn-quick-checkin ${isMemberCurrentUser ? "is-self-checkin" : "is-proxy-checkin"}`}
-                          onClick={() => handleOpenEditModal(member)}
-                          title={
-                            isMemberCurrentUser
-                              ? "Log your standup check-in"
-                              : `Log check-in on behalf of ${member.name}`
-                          }
-                        >
-                          <PlusIcon width={12} height={12} />
-                          <span>{isMemberCurrentUser ? "Check In" : `Log for ${member.name.split(" ")[0]}`}</span>
-                        </button>
-                        {(() => {
-                          const isNudged = Boolean(nudgedMembers[member.id]);
-                          const nudgeInfo = nudgedMembers[member.id];
-                          return (
+                        {isMemberCurrentUser ? (
+                          <button
+                            type="button"
+                            className="btn-quick-checkin is-self-checkin"
+                            onClick={() => openLogModal(member)}
+                            title="Log your daily standup update"
+                          >
+                            <PlusIcon width={13} height={13} />
+                            <span>Check In Today</span>
+                          </button>
+                        ) : (
+                          <>
                             <button
                               type="button"
-                              className={`btn-send-nudge ${isNudged ? "is-reminded" : ""}`}
-                              onClick={() => handleSendNudge(member)}
-                              title={
-                                isNudged
-                                  ? `Reminder sent at ${nudgeInfo?.timeStr || "earlier today"}. Click to resend.`
-                                  : `Send Trello @mention reminder to ${member.name}`
-                              }
+                              className="btn-quick-checkin is-proxy-checkin"
+                              onClick={() => openLogModal(member)}
+                              title={`Log standup on behalf of ${member.name}`}
                             >
-                              {isNudged ? (
-                                <>
-                                  <span className="btn-nudge-reminded-label">
-                                    <CheckIcon width={12} height={12} />
-                                    <span>Reminded</span>
-                                  </span>
-                                  <span className="btn-nudge-resend-label">
-                                    <RefreshCwIcon width={12} height={12} />
-                                    <span>Resend Reminder</span>
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <BellIcon width={12} height={12} />
-                                  <span>Send Reminder</span>
-                                </>
-                              )}
+                              <PlusIcon width={12} height={12} />
+                              <span>Log Update</span>
                             </button>
-                          );
-                        })()}
+                            {(() => {
+                              const isNudged = Boolean(nudgedMembers[member.id]);
+                              const nudgeInfo = nudgedMembers[member.id];
+                              return (
+                                <button
+                                  type="button"
+                                  className={`btn-send-nudge ${isNudged ? "is-reminded" : ""}`}
+                                  onClick={() => handleSendNudge(member)}
+                                  title={
+                                    isNudged
+                                      ? `Reminder sent at ${nudgeInfo?.timeStr || "earlier today"}. Click to resend.`
+                                      : `Send Trello @mention reminder to ${member.name}`
+                                  }
+                                >
+                                  {isNudged ? (
+                                    <>
+                                      <span className="btn-nudge-reminded-label">
+                                        <CheckIcon width={12} height={12} />
+                                        <span>Reminded</span>
+                                      </span>
+                                      <span className="btn-nudge-resend-label">
+                                        <RefreshCwIcon width={12} height={12} />
+                                        <span>Resend</span>
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <BellIcon width={12} height={12} />
+                                      <span>Send Reminder</span>
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })()}
+                          </>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -2007,7 +2032,7 @@ export default function StandupApp({ t }) {
                           {isLoggingOnBehalf ? (
                             <>
                               <UsersIcon width={11} height={11} />
-                              <span>Proxy for {formTeammate.split(" ")[0]}</span>
+                              <span>Proxy Mode</span>
                             </>
                           ) : (
                             <>
@@ -2020,7 +2045,7 @@ export default function StandupApp({ t }) {
                     </div>
                     <select
                       className="modal-select"
-                      value={formTeammate}
+                      value={formTeammate || ""}
                       onChange={(e) => handleSelectFormTeammate(e.target.value)}
                     >
                       {teamMembers.map((m) => (
@@ -2047,18 +2072,11 @@ export default function StandupApp({ t }) {
                 {/* Scribe / On-Behalf Mode Attribution Notice */}
                 {isLoggingOnBehalf && (
                   <div className="proxy-attribution-banner">
-                    <div className="proxy-banner-left">
-                      <div className="proxy-banner-icon-bubble">
-                        <UsersIcon width={15} height={15} />
-                      </div>
-                      <div className="proxy-banner-text">
-                        <div className="proxy-banner-title">
-                          Scribe / On-Behalf Mode
-                        </div>
-                        <p className="proxy-banner-desc">
-                          You are logging this update for <strong>{formTeammate}</strong>. An attribution stamp will be displayed indicating that it was submitted by <em>{activeUser?.fullName || currentUserMember?.name || "you"}</em>.
-                        </p>
-                      </div>
+                    <div className="proxy-banner-info">
+                      <UsersIcon width={13} height={13} className="proxy-banner-icon" />
+                      <span>
+                        Logging on behalf of <strong>{formTeammate || "Teammate"}</strong> &bull; Attributed to <em>{activeUser?.fullName || currentUserMember?.name || "you"}</em>
+                      </span>
                     </div>
                     {currentUserMember && (
                       <button
@@ -2066,7 +2084,7 @@ export default function StandupApp({ t }) {
                         className="btn-switch-to-self"
                         onClick={() => handleSelectFormTeammate(currentUserMember.name)}
                       >
-                        Switch to my update
+                        Switch to myself
                       </button>
                     )}
                   </div>
@@ -2328,7 +2346,7 @@ export default function StandupApp({ t }) {
                 </button>
                 <button type="submit" className="btn-save-publish">
                   {isLoggingOnBehalf
-                    ? `Publish Update for ${formTeammate.split(" ")[0]}`
+                    ? `Publish for ${targetTeammateShort}`
                     : "Save & Publish Standup"}
                 </button>
               </div>
