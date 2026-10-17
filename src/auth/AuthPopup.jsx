@@ -85,7 +85,7 @@ export default function AuthPopup({ t }) {
         accentColor: "#0f172a",
         height: 640,
         fullscreen: false,
-        title: "Daily Standups",
+        title: "Team Standup",
       });
     }
     if (t && typeof t.closePopup === "function") {
@@ -101,14 +101,14 @@ export default function AuthPopup({ t }) {
         </div>
         <h3 className="auth-title">Connected to {APP_NAME}</h3>
         <p className="auth-subtitle" style={{ marginBottom: "18px", lineHeight: "1.45" }}>
-          Your Trello account is connected! You can now participate in daily standups, log blockers, and sync sprint status.
+          Your Trello account is connected! You can now participate in team standups, log blockers, and sync sprint status.
         </p>
         <button
           type="button"
           onClick={handleOpenStandup}
           className="auth-btn-primary"
         >
-          Open Daily Standups
+          Open Team Standup
         </button>
       </div>
     );

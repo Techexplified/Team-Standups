@@ -12,6 +12,12 @@ export default function SettingsPopup({ t }) {
     loadMemberProfile();
   }, []);
 
+  useEffect(() => {
+    if (t && typeof t.sizeTo === "function") {
+      t.sizeTo(".settings-container").catch(() => {});
+    }
+  }, [t, status]);
+
   async function loadMemberProfile() {
     setStatus("checking");
     try {
@@ -32,7 +38,7 @@ export default function SettingsPopup({ t }) {
         const mockFallback = {
           fullName: "Sprint Team Member",
           username: "standup_member",
-          initials: "DS",
+          initials: "TS",
         };
         setMember(mockFallback);
         setStatus("connected");
@@ -49,7 +55,7 @@ export default function SettingsPopup({ t }) {
   function handleReauthorize() {
     if (t && typeof t.popup === "function") {
       t.popup({
-        title: "Authorize Daily Standups Power-Up",
+        title: "Authorize Team Standup",
         url: "./auth.html",
         height: 340,
       });
@@ -65,7 +71,7 @@ export default function SettingsPopup({ t }) {
         accentColor: "#0f172a",
         height: 640,
         fullscreen: false,
-        title: "Daily Standups",
+        title: "Team Standup",
       });
     }
     if (t && typeof t.closePopup === "function") {
@@ -90,10 +96,10 @@ export default function SettingsPopup({ t }) {
         </div>
         <h3 className="settings-title">Not Connected</h3>
         <p className="settings-subtitle" style={{ margin: "6px 0 18px" }}>
-          Authorize Daily Standups Power-Up to access board members, cards, and log standup progress.
+          Authorize Team Standup Power-Up to access board members, cards, and log standup progress.
         </p>
         <button type="button" onClick={handleReauthorize} className="settings-btn-reauth">
-          Authorize Daily Standups
+          Authorize Team Standup
         </button>
       </div>
     );
@@ -105,7 +111,7 @@ export default function SettingsPopup({ t }) {
         {member?.avatarUrl ? (
           <img src={`${member.avatarUrl}/50.png`} alt={member.fullName} className="settings-avatar" />
         ) : (
-          <div className="settings-avatar-fallback">{member?.initials || "DS"}</div>
+          <div className="settings-avatar-fallback">{member?.initials || "TS"}</div>
         )}
         <div>
           <h3 className="settings-title">{member?.fullName || "Trello Member"}</h3>
@@ -121,7 +127,7 @@ export default function SettingsPopup({ t }) {
       <div className="settings-info-card">
         <div className="settings-info-row">
           <span className="settings-info-label">Power-Up</span>
-          <span className="settings-info-value">Daily Standups</span>
+          <span className="settings-info-value">Team Standup</span>
         </div>
         <div className="settings-info-row">
           <span className="settings-info-label">Token Scope</span>
@@ -134,7 +140,7 @@ export default function SettingsPopup({ t }) {
       </div>
 
       <button type="button" onClick={handleOpenStandup} className="settings-btn-primary">
-        Open Daily Standups
+        Open Team Standup
       </button>
 
       <button type="button" onClick={handleDisconnect} className="settings-btn-disconnect">

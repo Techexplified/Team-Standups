@@ -192,7 +192,7 @@ const MOCK_CARDS = [
   },
   {
     id: "card_12",
-    name: "Finalize Daily Standup Power-Up checklist",
+    name: "Finalize Team Standup Power-Up checklist",
     desc: "Review acceptance criteria with engineering and product",
     idList: "list_doing",
     idMembers: ["m_sofia"],
@@ -249,7 +249,9 @@ export function getTrelloClient() {
   return {
     get: (scope, visibility, key) => {
       try {
-        const val = localStorage.getItem(`ds_powerup_${scope}_${visibility}_${key}`);
+        const val =
+          localStorage.getItem(`ts_powerup_${scope}_${visibility}_${key}`) ||
+          localStorage.getItem(`ds_powerup_${scope}_${visibility}_${key}`);
         return Promise.resolve(val);
       } catch (e) {
         return Promise.resolve(null);
@@ -258,12 +260,14 @@ export function getTrelloClient() {
     set: (scope, visibility, key, val) => {
       try {
         const serialized = typeof val === "string" ? val : JSON.stringify(val);
+        localStorage.setItem(`ts_powerup_${scope}_${visibility}_${key}`, serialized);
         localStorage.setItem(`ds_powerup_${scope}_${visibility}_${key}`, serialized);
       } catch (e) {}
       return Promise.resolve();
     },
     remove: (scope, visibility, key) => {
       try {
+        localStorage.removeItem(`ts_powerup_${scope}_${visibility}_${key}`);
         localStorage.removeItem(`ds_powerup_${scope}_${visibility}_${key}`);
       } catch (e) {}
       return Promise.resolve();

@@ -1,4 +1,4 @@
-// Single source of truth for member's Trello authentication token for Daily Standups Power-Up.
+// Single source of truth for member's Trello authentication token for Team Standup Power-Up.
 //
 // Stored in Trello's member-scoped private plugin storage:
 // `t.set('member', 'private', 'token', token)`.
@@ -7,10 +7,10 @@
 
 export const APP_KEY =
   import.meta.env.VITE_TRELLO_APP_KEY || "a4ef4a43f0544e198fc93d286848d00c";
-export const APP_NAME = "Daily Standups Power-Up";
+export const APP_NAME = "Team Standup";
 
 // Shared message tag validated by authorized.js and AuthPopup.jsx
-export const AUTH_MESSAGE_SOURCE = "daily-standups-powerup-auth";
+export const AUTH_MESSAGE_SOURCE = "team-standup-powerup-auth";
 
 const TOKEN_KEY = "token";
 

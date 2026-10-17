@@ -70,7 +70,7 @@ export function getCurrentMember(t) {
 }
 
 /**
- * Disconnects the member from Daily Standups by clearing the stored token.
+ * Disconnects the member from Team Standup by clearing the stored token.
  * @param {object} t - Trello Power-Up client
  */
 export async function disconnectMember(t) {

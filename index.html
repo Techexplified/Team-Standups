@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Daily Standups — Trello Power-Up Dev Sandbox</title>
+    <title>Team Standup — Trello Power-Up Dev Sandbox</title>
     <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -215,8 +215,8 @@
   <body>
     <header>
       <div class="logo-group">
-        <img src="./icons/icon.svg" alt="Daily Standups Logo" class="logo-icon" />
-        <h1>Daily Standups Power-Up</h1>
+        <img src="./icons/icon.svg" alt="Team Standup Logo" class="logo-icon" />
+        <h1>Team Standup Power-Up</h1>
         <span class="badge">Vite Sandbox</span>
       </div>
       <div>
@@ -295,6 +295,7 @@ standup.html   -> Main modal dashboard & card-back section
       }
 
       function clearLocalAuth() {
+        localStorage.removeItem('ts_powerup_member_private_token');
         localStorage.removeItem('ds_powerup_member_private_token');
         localStorage.removeItem('process_powerup_member_private_token');
         alert('Stored token cleared! Reloading frame...');
@@ -302,6 +303,7 @@ standup.html   -> Main modal dashboard & card-back section
       }
 
       function setMockAuth() {
+        localStorage.setItem('ts_powerup_member_private_token', 'mock_trello_member_token_abc123');
         localStorage.setItem('ds_powerup_member_private_token', 'mock_trello_member_token_abc123');
         alert('Mock token injected! Reloading frame...');
         document.getElementById('preview-frame').contentWindow.location.reload();

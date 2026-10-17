@@ -1,4 +1,3 @@
-/* global TrelloPowerUp */
 import { isAuthorized } from "../lib/auth.js";
 
 const ICON_URL =
@@ -6,7 +5,13 @@ const ICON_URL =
     ? `${window.location.origin}/icons/icon.svg`
     : "./icons/icon.svg";
 
-TrelloPowerUp.initialize({
+const PowerUpClient =
+  typeof window !== "undefined" && window.TrelloPowerUp
+    ? window.TrelloPowerUp
+    : (typeof TrelloPowerUp !== "undefined" ? TrelloPowerUp : null);
+
+if (PowerUpClient && typeof PowerUpClient.initialize === "function") {
+  PowerUpClient.initialize({
   // Capability: Trello queries this capability to decide whether to prompt the member to authorize
   "authorization-status": async function (t) {
     const authorized = await isAuthorized(t);
@@ -16,7 +21,7 @@ TrelloPowerUp.initialize({
   // Capability: Called when Trello prompts authorization
   "show-authorization": function (t) {
     return t.popup({
-      title: "Authorize Daily Standups",
+      title: "Authorize Team Standup",
       url: "./auth.html",
       height: 340,
     });
@@ -25,13 +30,13 @@ TrelloPowerUp.initialize({
   // Capability: Called when member opens Power-Up settings from the board menu
   "show-settings": function (t) {
     return t.popup({
-      title: "Daily Standups Settings",
+      title: "Team Standup Settings",
       url: "./settings.html",
       height: 300,
     });
   },
 
-  // Capability: Adds a Daily Standups button in the top board header
+  // Capability: Adds a Team Standup button in the top board header
   "board-buttons": function () {
     return [
       {
@@ -39,12 +44,12 @@ TrelloPowerUp.initialize({
           dark: ICON_URL,
           light: ICON_URL,
         },
-        text: "Daily Standups",
+        text: "Team Standup",
         callback: async function (t) {
           const authorized = await isAuthorized(t);
           if (!authorized) {
             return t.popup({
-              title: "Authorize Daily Standups",
+              title: "Authorize Team Standup",
               url: "./auth.html",
               height: 340,
             });
@@ -56,7 +61,7 @@ TrelloPowerUp.initialize({
             accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
-            title: "Daily Standups Sync",
+            title: "Team Standup Sync",
           });
         },
       },
@@ -68,12 +73,12 @@ TrelloPowerUp.initialize({
     return [
       {
         icon: ICON_URL,
-        text: "Daily Standup",
+        text: "Team Standup",
         callback: async function (t) {
           const authorized = await isAuthorized(t);
           if (!authorized) {
             return t.popup({
-              title: "Authorize Daily Standups",
+              title: "Authorize Team Standup",
               url: "./auth.html",
               height: 340,
             });
@@ -92,7 +97,7 @@ TrelloPowerUp.initialize({
             accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
-            title: "Daily Standup Entry",
+            title: "Team Standup Entry",
           });
         },
       },
@@ -128,6 +133,7 @@ TrelloPowerUp.initialize({
           text: "Standup Done",
           icon: ICON_URL,
           color: "green",
+          monochrome: false,
         });
       }
 
@@ -155,11 +161,14 @@ TrelloPowerUp.initialize({
     } catch (e) {}
 
     return {
-      title: "Daily Standup Status",
+      title: "Team Standup Status",
       icon: ICON_URL,
       content: {
         type: "iframe",
-        url: t.signUrl(`./standup.html?view=card-back-section${cardParam}`),
+        url:
+          typeof t.signUrl === "function"
+            ? t.signUrl(`./standup.html?view=card-back-section${cardParam}`)
+            : `./standup.html?view=card-back-section${cardParam}`,
         height: 220,
       },
       action: {
@@ -178,7 +187,7 @@ TrelloPowerUp.initialize({
             accentColor: "#0f172a",
             height: 720,
             fullscreen: true,
-            title: "Daily Standups",
+            title: "Team Standup",
           });
         },
       },
@@ -208,7 +217,7 @@ TrelloPowerUp.initialize({
               accentColor: "#0f172a",
               height: 640,
               fullscreen: false,
-              title: "Daily Standups",
+              title: "Team Standup",
             });
           },
         },
@@ -218,3 +227,4 @@ TrelloPowerUp.initialize({
     }
   },
 });
+}

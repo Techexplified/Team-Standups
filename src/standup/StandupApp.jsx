@@ -196,7 +196,7 @@ const INITIAL_TEAM_MEMBERS = [
       "Triage reported blockers and dependencies with leads",
     ],
     todayTasks: [
-      { id: "t10", tag: "[PRD-18]", text: "Finalize Daily Standup Power-Up checklist", status: "In Progress" },
+      { id: "t10", tag: "[PRD-18]", text: "Finalize Team Standup Power-Up checklist", status: "In Progress" },
       { id: "t11", tag: "[USER-8]", text: "Stakeholder demo session prep", status: "To Do" },
     ],
     hasBlocker: false,
@@ -783,7 +783,7 @@ export default function StandupApp({ t }) {
         if (err?.message === "NOT_AUTHORIZED") {
           if (t && typeof t.popup === "function") {
             t.popup({
-              title: "Authorize Daily Standups",
+              title: "Authorize Team Standup",
               url: "./auth.html",
               height: 340,
             });
@@ -1189,11 +1189,22 @@ export default function StandupApp({ t }) {
       ? boardData.cards.find((c) => c.id === cardBackCardId)
       : null;
 
-    const assignedMember = specificCard && specificCard.idMembers.length > 0
-      ? teamMembers.find((m) => specificCard.idMembers.includes(m.id))
-      : teamMembers[0];
+    const assignedMember =
+      specificCard && Array.isArray(specificCard.idMembers) && specificCard.idMembers.length > 0
+        ? teamMembers.find((m) => specificCard.idMembers.includes(m.id))
+        : (teamMembers[0] || null);
 
-    const targetStandup = assignedMember || teamMembers[0];
+    const targetStandup = assignedMember || teamMembers[0] || {
+      name: "Team Member",
+      role: "Board Contributor",
+      status: "unsubmitted",
+      todayTasks: [],
+      hasBlocker: false,
+      blockerText: "",
+    };
+
+    const isSubmitted = targetStandup.status === "submitted";
+    const todayTasks = Array.isArray(targetStandup.todayTasks) ? targetStandup.todayTasks : [];
 
     return (
       <div className="card-back-compact-container">
@@ -1202,11 +1213,11 @@ export default function StandupApp({ t }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <StandupLogoIcon width={20} height={20} />
               <span style={{ fontSize: 13, fontWeight: 700 }}>
-                {specificCard ? specificCard.name : "Today's Standup Status"}
+                {specificCard?.name || "Today's Standup Status"}
               </span>
             </div>
-            <span className={`status-pill ${targetStandup.status === "submitted" ? "submitted" : "unsubmitted"}`}>
-              {targetStandup.status === "submitted" ? (
+            <span className={`status-pill ${isSubmitted ? "submitted" : "unsubmitted"}`}>
+              {isSubmitted ? (
                 <>
                   <CheckIcon width={12} height={12} />
                   Submitted
@@ -1220,16 +1231,16 @@ export default function StandupApp({ t }) {
           <div style={{ fontSize: 12, color: "var(--ds-text-secondary)", lineHeight: 1.45 }}>
             <p style={{ margin: "0 0 6px 0" }}>
               <strong style={{ color: "var(--ds-text-primary)" }}>Assignee: </strong>
-              {targetStandup.name} ({targetStandup.role})
+              {targetStandup.name || "Teammate"} ({targetStandup.role || "Contributor"})
             </p>
             <p style={{ margin: "0 0 6px 0" }}>
               <strong style={{ color: "var(--ds-text-primary)" }}>Doing Today: </strong>
-              {targetStandup.todayTasks.length > 0
-                ? targetStandup.todayTasks.map((t) => `${t.tag} ${t.text}`).join(", ")
+              {todayTasks.length > 0
+                ? todayTasks.map((t) => `${t.tag || ""} ${t.text || ""}`).join(", ")
                 : "No active tasks logged"}
             </p>
             {targetStandup.hasBlocker ? (
-              <p style={{ margin: 0, color: "var(--ds-crimson)" }}>⚠️ Blocker: {targetStandup.blockerText}</p>
+              <p style={{ margin: 0, color: "var(--ds-crimson)" }}>⚠️ Blocker: {targetStandup.blockerText || "Reported"}</p>
             ) : (
               <p style={{ margin: 0, color: "var(--ds-emerald)" }}>✓ No blockers reported</p>
             )}
@@ -1253,7 +1264,7 @@ export default function StandupApp({ t }) {
         <div className="navbar-left">
           <div className="brand-wrapper">
             <StandupLogoIcon width={22} height={22} />
-            <h1 className="brand-title">Daily Standups</h1>
+            <h1 className="brand-title">Team Standup</h1>
           </div>
 
           {/* Actual Board Name & Sync Pill */}
@@ -1644,8 +1655,8 @@ export default function StandupApp({ t }) {
                           <h4 className="unsubmitted-headline">Awaiting Today's Check-in</h4>
                           <p className="unsubmitted-helper">
                             {assignedCardsCount > 0
-                              ? `${member.name.split(" ")[0]} has ${assignedCardsCount} active board task${assignedCardsCount > 1 ? "s" : ""}:`
-                              : `${member.name.split(" ")[0]} hasn't shared their daily update yet today.`}
+                              ? `${(member.name || "Member").split(" ")[0]} has ${assignedCardsCount} active board task${assignedCardsCount > 1 ? "s" : ""}:`
+                              : `${(member.name || "Member").split(" ")[0]} hasn't shared their daily update yet today.`}
                           </p>
                         </div>
                       </div>
@@ -1672,7 +1683,7 @@ export default function StandupApp({ t }) {
                             type="button"
                             className="btn-quick-checkin is-self-checkin"
                             onClick={() => openLogModal(member)}
-                            title="Log your daily standup update"
+                            title="Log your standup update"
                           >
                             <PlusIcon width={13} height={13} />
                             <span>Check In Today</span>
@@ -2026,7 +2037,7 @@ export default function StandupApp({ t }) {
               <div className="modal-title-group">
                 <div className="modal-badge-su">SU</div>
                 <div>
-                  <h2 className="modal-title">Log Daily Standup</h2>
+                  <h2 className="modal-title">Log Team Standup</h2>
                   <p className="modal-subtitle">
                     Sync yesterday's work, today's focus, and cards from {boardData.board.name}
                   </p>
@@ -2187,7 +2198,7 @@ export default function StandupApp({ t }) {
                             className={`picker-tab-btn ${cardPickerTab === "assigned" ? "active" : ""}`}
                             onClick={() => setCardPickerTab("assigned")}
                           >
-                            Assigned to {formTeammate.split(" ")[0]} ({assignedCardsForTeammate.length})
+                            Assigned to {formTeammate ? formTeammate.split(" ")[0] : "Teammate"} ({assignedCardsForTeammate.length})
                           </button>
                           <button
                             type="button"

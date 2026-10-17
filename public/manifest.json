@@ -1,6 +1,6 @@
 {
-  "name": "Daily Standups Power-Up",
-  "details": "Conduct asynchronous and live daily standups, track blockers, sync yesterday's work, and share today's goals directly inside Trello.",
+  "name": "Team Standup",
+  "details": "Conduct asynchronous and live team standups, track blockers, sync yesterday's work, and share today's goals directly inside Trello.",
   "html": "powerup.html",
   "author": "Explified",
   "capabilities": [

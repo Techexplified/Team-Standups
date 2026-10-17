@@ -1,8 +1,8 @@
 {
-  "name": "daily-standups-trello-powerup",
+  "name": "team-standup-trello-powerup",
   "private": true,
   "version": "1.0.0",
-  "description": "Daily Standups Power-Up for Trello - Team standups, blockers & daily sync",
+  "description": "Team Standup Power-Up for Trello - Team standups, blockers & daily sync",
   "type": "module",
   "scripts": {
     "dev": "vite",

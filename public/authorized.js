@@ -31,11 +31,11 @@
     window.history.replaceState(null, "", window.location.pathname);
   }
 
-  // Post the token securely to the opener window (Daily Standups Power-Up auth popup)
+  // Post the token securely to the opener window (Team Standup Power-Up auth popup)
   if (window.opener) {
     window.opener.postMessage(
       {
-        source: "daily-standups-powerup-auth",
+        source: "team-standup-powerup-auth",
         token: token,
       },
       window.location.origin
@@ -43,7 +43,7 @@
   }
 
   if (titleEl) titleEl.textContent = "Connection Successful!";
-  if (descEl) descEl.textContent = "Daily Standups Power-Up is now authorized with Trello. Closing window…";
+  if (descEl) descEl.textContent = "Team Standup is now authorized with Trello. Closing window…";
   if (spinnerContainer) spinnerContainer.style.display = "none";
 
   // Attempt to close popup window automatically
