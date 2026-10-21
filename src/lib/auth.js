@@ -5,8 +5,9 @@
 // It is scoped to that single member on the current board and cannot be read
 // by any other board member. It is never stored on external servers.
 
-export const APP_KEY =
-  import.meta.env.VITE_TRELLO_APP_KEY || "a4ef4a43f0544e198fc93d286848d00c";
+const rawKey =
+  import.meta.env.VITE_TRELLO_APP_KEY || "a1ef2e09858d23c94606d66bf81873b0";
+export const APP_KEY = String(rawKey).trim().split(/\s+/)[0];
 export const APP_NAME = "Team Standup";
 
 // Shared message tag validated by authorized.js and AuthPopup.jsx
